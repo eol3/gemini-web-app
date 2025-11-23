@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>本地檔案式記事本 (修復版 - 診斷中)</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 載入 Inter 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- 載入 JSZip 函式庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+        .editable-field {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        /* 圖片預覽區塊的樣式 */
+        .image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 0.5rem;
+        }
+        .image-thumbnail {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+        .image-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .remove-img-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .remove-img-btn:hover {
+            background: rgba(220, 38, 38, 0.9);
+        }
+        
+        /* 自定義橫向捲軸樣式 */
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px; 
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+        
+        /* Lightbox 圖片樣式 */
+        .lightbox-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+    </style>
+    <script type="module">
+        const DB_NAME = 'LocalNoteDB';
+        const STORE_NAME = 'notes';
+        const DB_VERSION = 1;
+        
+        let isEditing = false; 
+        let currentNewNoteImages = []; 
+
+        let noteFormContainer;
+        let toggleFormBtn;
+        let closeFormBtn;
+        let sortSelect; 
+        let noteCountStatus; 
+        
+        // --- Lightbox 全域狀態變數 ---
+        let currentLightboxNoteId = null;
+        let currentLightboxImages = [];
+        let currentLightboxIndex = -1;
+        
+        // --- 觸控/滑動狀態變數 ---
+        let touchStartX = 0;
+        const SWIPE_THRESHOLD = 50; 
+
+        // --- 輔助函式 ---
+        const fileToDataURL = (file) => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file);
+            });
+        };
+        
+        const dataURLToBlob = (dataURL) => {
+            const parts = dataURL.split(';base64,');
+            if (parts.length < 2) return new Blob([]);
+            const contentType = parts[0].split(':')[1];
+            const raw = window.atob(parts[1]);
+            const rawLength = raw.length;
+            const uInt8Array = new Uint8Array(rawLength);
+            for (let i = 0; i < rawLength; ++i) uInt8Array[i] = raw.charCodeAt(i);
+            return new Blob([uInt8Array], { type: contentType });
+        };
+        
+        const getMimeTypeFromFilename = (filename) => {
+            const ext = filename.split('.').pop().toLowerCase();
+            switch (ext) {
+                case 'png': return 'image/png';
+                case 'jpg': case 'jpeg': return 'image/jpeg';
+                case 'gif': return 'image/gif';
+                case 'webp': return 'image/webp';
+                default: return 'image/png';
+            }
+        };
+
+        const formatDate = (timestamp) => {
+            if (!timestamp) return '未知時間';
+            return new Date(timestamp).toLocaleString('zh-TW', { 
+                year: 'numeric', month: 'numeric', day: 'numeric', 
+                hour: '2-digit', minute: '2-digit' 
+            });
+        };
+
+        // --- IndexedDB 核心函式 (略) ---
+        const openNoteDB = () => {
+            return new Promise((resolve, reject) => {
+                if (!window.indexedDB) { reject('您的瀏覽器不支援 IndexedDB。'); return; }
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onerror = event => { reject('無法打開資料庫。' + event.target.error?.message); };
+                request.onsuccess = event => { resolve(event.target.result); };
+                request.onupgradeneeded = event => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                    }
+                };
+            });
+        };
+        
+        const getNotesDB = async () => {
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                return new Promise((resolve, reject) => {
+                    const request = store.getAll();
+                    request.onsuccess = () => {
+                        const notes = request.result;
+                        resolve(notes);
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            } catch (e) {
+                console.error("讀取筆記失敗:", e);
+                return [];
+            }
+        };
+        
+        const getNoteByIdDB = async (noteId) => {
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                return new Promise((resolve, reject) => {
+                    const request = store.get(noteId);
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            } catch (e) {
+                console.error("讀取單個筆記失敗:", e);
+                return null;
+            }
+        };
+
+        const createNote = async (title, content) => {
+            if (!title || !content) { showModal('警告', '標題與內容不能為空！'); return; }
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const now = Date.now();
+                const newNote = { 
+                    title, 
+                    content, 
+                    created_at: now,
+                    updated_at: now,
+                    timestamp: now,
+                    images: currentNewNoteImages 
+                };
+                store.add(newNote).onsuccess = () => {
+                    loadNotes(); 
+                    document.getElementById('note-title').value = '';
+                    document.getElementById('note-content').value = '';
+                    resetNewNoteImages();
+                    hideNoteForm();
+                };
+                transaction.onerror = (e) => showModal('錯誤', '新增筆記失敗：' + (e.target.error?.message || '未知錯誤'));
+            } catch (e) { showModal('錯誤', '資料庫連接失敗：' + e); }
+        };
+
+        const updateNote = async (noteId, newTitle, newContent, newImagesArray) => {
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const getRequest = store.get(noteId);
+                getRequest.onsuccess = () => {
+                    const oldNote = getRequest.result;
+                    if (!oldNote) { showModal('錯誤', '找不到要更新的筆記。'); return; }
+                    oldNote.title = newTitle;
+                    oldNote.content = newContent;
+                    oldNote.updated_at = Date.now();
+                    oldNote.timestamp = Date.now();
+                    oldNote.images = newImagesArray;
+                    delete oldNote.image; 
+                    
+                    store.put(oldNote).onsuccess = () => { 
+                        loadNotes(); 
+                        isEditing = false; 
+                    };
+                    store.put(oldNote).onerror = (e) => showModal('錯誤', '寫入失敗：' + e.target.error?.message);
+                };
+                getRequest.onerror = (e) => showModal('錯誤', '讀取失敗：' + e.target.error?.message);
+            } catch (e) { showModal('錯誤', '資料庫連接失敗：' + e); }
+        };
+
+        const deleteNote = async (noteId) => {
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                store.delete(noteId).onsuccess = () => { loadNotes(); };
+                transaction.onerror = (e) => showModal('錯誤', '刪除失敗：' + e.target.error?.message);
+            } catch (e) { showModal('錯誤', '資料庫連接失敗：' + e); }
+        };
+        
+        const saveNotesToDB = async (notes) => {
+            try {
+                const db = await openNoteDB();
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                let notesAddedCount = 0;
+                store.clear().onsuccess = () => {
+                    notes.forEach(note => {
+                        const now = Date.now();
+                        const created = note.created_at || note.timestamp || now;
+                        const updated = note.updated_at || note.timestamp || now;
+                        
+                        const newNote = {
+                            title: note.title || '無標題',
+                            content: note.content || '',
+                            created_at: created,
+                            updated_at: updated,
+                            timestamp: updated,
+                            images: note.images || []
+                        };
+                        store.add(newNote);
+                        notesAddedCount++;
+                    });
+                    transaction.oncomplete = () => {
+                        loadNotes();
+                        showModal('匯入成功', `成功匯入 ${notesAddedCount} 條筆記！`);
+                    };
+                };
+                transaction.onerror = (e) => showModal('錯誤', '資料庫儲存失敗：' + e.target.error?.message);
+            } catch (e) { showModal('錯誤', '資料庫連接失敗：' + e); }
+        };
+
+        // --- Lightbox 函式 (支援左右切換與滑動) ---
+        window.openLightbox = async (noteId, initialIndex) => {
+            const noteData = await getNoteByIdDB(noteId);
+            if (!noteData || !noteData.images || noteData.images.length === 0) return;
+            
+            // 設定全域狀態
+            currentLightboxNoteId = noteId;
+            currentLightboxImages = noteData.images;
+            currentLightboxIndex = initialIndex;
+
+            const modal = document.getElementById('lightbox-modal');
+            const img = document.getElementById('lightbox-image');
+            
+            window.updateLightboxImage(); 
+            
+            // 啟用鍵盤與觸控事件
+            document.addEventListener('keydown', window.handleLightboxKeydown);
+            img.addEventListener('touchstart', handleTouchStart);
+            img.addEventListener('touchmove', handleTouchMove);
+            img.addEventListener('touchend', handleTouchEnd);
+            
+            modal.classList.remove('hidden');
+        };
+
+        window.closeLightbox = () => {
+            const modal = document.getElementById('lightbox-modal');
+            const img = document.getElementById('lightbox-image');
+
+            modal.classList.add('hidden');
+            document.removeEventListener('keydown', window.handleLightboxKeydown);
+            
+            // 移除觸控事件
+            img.removeEventListener('touchstart', handleTouchStart);
+            img.removeEventListener('touchmove', handleTouchMove);
+            img.removeEventListener('touchend', handleTouchEnd);
+
+            // 清空狀態
+            currentLightboxNoteId = null;
+            currentLightboxImages = [];
+            currentLightboxIndex = -1;
+        };
+        
+        // 更新 Lightbox 中顯示的圖片和導航按鈕狀態
+        window.updateLightboxImage = () => {
+            if (currentLightboxIndex < 0 || currentLightboxIndex >= currentLightboxImages.length) return;
+
+            const img = document.getElementById('lightbox-image');
+            const prevBtn = document.getElementById('lightbox-prev-btn');
+            const nextBtn = document.getElementById('lightbox-next-btn');
+            
+            img.src = currentLightboxImages[currentLightboxIndex];
+
+            // 根據當前索引顯示/隱藏導航按鈕 (主要控制桌面版的頭尾狀態)
+            prevBtn.classList.toggle('hidden', currentLightboxIndex <= 0);
+            nextBtn.classList.toggle('hidden', currentLightboxIndex >= currentLightboxImages.length - 1);
+        };
+        
+        // 導航到下一張或上一張圖片 (direction: -1 for prev, 1 for next)
+        window.navigateLightbox = (direction) => {
+            let newIndex = currentLightboxIndex + direction;
+            if (newIndex >= 0 && newIndex < currentLightboxImages.length) {
+                currentLightboxIndex = newIndex;
+                window.updateLightboxImage();
+            }
+        };
+
+        window.handleLightboxKeydown = (e) => {
+            if (e.key === 'Escape') {
+                window.closeLightbox();
+            } else if (e.key === 'ArrowLeft') {
+                e.preventDefault(); 
+                window.navigateLightbox(-1);
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault(); 
+                window.navigateLightbox(1);
+            }
+        };
+
+        // --- 觸控滑動處理函式 ---
+        const handleTouchStart = (e) => {
+            if (currentLightboxImages.length <= 1) return;
+            touchStartX = e.touches[0].clientX;
+            // 紀錄是否發生移動
+            e.currentTarget.dataset.touchMoved = 'false';
+        };
+
+        const handleTouchMove = (e) => {
+            // 阻止預設行為 (如頁面捲動)
+            e.preventDefault();
+            e.currentTarget.dataset.touchMoved = 'true';
+        };
+
+        const handleTouchEnd = (e) => {
+            if (currentLightboxImages.length <= 1) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const deltaX = touchEndX - touchStartX;
+
+            if (Math.abs(deltaX) > SWIPE_THRESHOLD) {
+                if (deltaX > 0) {
+                    // Swiped right -> Previous image
+                    window.navigateLightbox(-1);
+                } else {
+                    // Swiped left -> Next image
+                    window.navigateLightbox(1);
+                }
+            }
+            
+            // 重置狀態
+            e.currentTarget.dataset.touchMoved = 'false';
+        };
+
+        // --- 檔案處理 (ZIP 匯出/匯入) (略) ---
+        document.getElementById('export-btn').onclick = async () => {
+            const allNotes = await getNotesDB();
+            if (allNotes.length === 0) { showModal('警告', '目前沒有筆記可以匯出。'); return; }
+            if (isEditing) { showModal('警告', '請先完成當前筆記的編輯或儲存。'); return; }
+
+            const textNotes = [];
+            const zip = new JSZip();
+
+            allNotes.forEach((note, noteIndex) => { 
+                const exportNote = { 
+                    title: note.title, 
+                    content: note.content, 
+                    created_at: note.created_at || note.timestamp,
+                    updated_at: note.updated_at || note.timestamp,
+                    timestamp: note.timestamp,
+                    image_files: [] 
+                };
+                
+                let imagesToExport = note.images || (note.image ? [note.image] : []); 
+                
+                // 筆記資料夾 ID (從 1 開始)
+                const folderId = noteIndex + 1; 
+
+                imagesToExport.forEach((imgBase64, index) => {
+                    if (!imgBase64) return;
+                    const mimeTypeMatch = imgBase64.match(/data:([^;]+);base64,/);
+                    const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
+                    const fileExtension = mimeType.split('/')[1] || 'png';
+                    
+                    // 新的 ZIP 路徑結構: images/{folderId}/image_{index}.ext
+                    const imageFileName = `image_${index}.${fileExtension}`; 
+                    const imagePathInZip = `images/${folderId}/${imageFileName}`;
+
+                    try {
+                        const imageBlob = dataURLToBlob(imgBase64);
+                        zip.file(imagePathInZip, imageBlob); 
+                        exportNote.image_files.push(imageFileName); 
+                    } catch (e) { console.error(`圖片 [Note ${note.id}, Image ${index}] 轉換失敗`, e); }
+                });
+                textNotes.push(exportNote);
+            });
+
+            zip.file("notes.json", JSON.stringify(textNotes, null, 2));
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+                const filename = `NoteExport_${timestamp}.zip`;
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a); URL.revokeObjectURL(url);
+                showModal('匯出成功', `已匯出 ${filename}。`);
+            }).catch(e => showModal('匯出錯誤', 'ZIP 檔案生成失敗。'));
+        };
+
+        const importFromZip = async (zipFile) => {
+            const zip = new JSZip();
+            try {
+                const content = await zip.loadAsync(zipFile);
+                const notesJsonFile = content.file('notes.json');
+                if (!notesJsonFile) { showModal('錯誤', 'ZIP 中找不到 notes.json。'); return; }
+                const notesJsonContent = await notesJsonFile.async('text');
+                const importedTextNotes = JSON.parse(notesJsonContent);
+                if (!Array.isArray(importedTextNotes)) { showModal('錯誤', 'notes.json 格式不正確。'); return; }
+                
+                const finalNotesToImport = [];
+                let noteIndex = 0; 
+                
+                for (const note of importedTextNotes) {
+                    let importedImages = [];
+                    const noteFolderId = noteIndex + 1; 
+                    
+                    if (note.image_files && Array.isArray(note.image_files)) {
+                        for (const filename of note.image_files) {
+                            const imagePathInZip = `images/${noteFolderId}/${filename}`;
+                            const imageFile = content.file(imagePathInZip);
+                            if (imageFile) {
+                                const base64Data = await imageFile.async('base64');
+                                const mimeType = getMimeTypeFromFilename(filename);
+                                importedImages.push(`data:${mimeType};base64,${base64Data}`);
+                            } else {
+                                console.warn(`警告: 在預期的結構化路徑中找不到圖片: ${imagePathInZip}`);
+                            }
+                        }
+                    } 
+                    else if (note.image_file) {
+                         const filename = note.image_file;
+                         const imagePathInZip = `images/${noteFolderId}/${filename}`;
+                         const imageFile = content.file(imagePathInZip);
+                         
+                         if (imageFile) {
+                            const base64Data = await imageFile.async('base64');
+                            const mimeType = getMimeTypeFromFilename(filename);
+                            importedImages.push(`data:${mimeType};base64,${base64Data}`);
+                         } else {
+                            console.warn(`警告: 在預期的結構化路徑中找不到單張圖片: ${imagePathInZip}`);
+                         }
+                    }
+
+                    finalNotesToImport.push({
+                        title: note.title || '無標題',
+                        content: note.content || '',
+                        created_at: note.created_at,
+                        updated_at: note.updated_at,
+                        timestamp: note.timestamp,
+                        images: importedImages 
+                    });
+                    noteIndex++; 
+                }
+                await saveNotesToDB(finalNotesToImport);
+            } catch (e) { showModal('錯誤', `ZIP 匯入失敗：${e.message}`); }
+        };
+
+        const importFromJson = async (file) => {
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const importedNotes = JSON.parse(event.target.result);
+                    if (!Array.isArray(importedNotes)) { showModal('錯誤', '格式不正確。'); return; }
+                    const notesWithoutImages = importedNotes.map(note => ({
+                        ...note,
+                        images: []
+                    }));
+                    await saveNotesToDB(notesWithoutImages);
+                } catch (e) { showModal('錯誤', `JSON 匯入失敗：${e.message}`); }
+            };
+            reader.readAsText(file);
+        };
+
+        const importNotesFromFile = async (file) => {
+            if (isEditing) { showModal('警告', '請先完成當前筆記的編輯或儲存。'); return; }
+            const fileName = file.name.toLowerCase();
+            if (fileName.endsWith('.zip')) await importFromZip(file);
+            else if (fileName.endsWith('.json')) await importFromJson(file);
+            else showModal('錯誤', '不支援的格式，請使用 .zip 檔案');
+        };
+
+        document.getElementById('import-btn').onclick = () => {
+            if (isEditing) { showModal('警告', '請先完成當前筆記的編輯或儲存。'); return; }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.zip, application/json';
+            input.style.display = 'none';
+            input.onchange = async (e) => { if (e.target.files[0]) await importNotesFromFile(e.target.files[0]); };
+            document.body.appendChild(input); input.click(); document.body.removeChild(input);
+        };
+
+        // --- UI 渲染與互動 (略) ---
+        const loadNotes = async () => {
+            const notes = await getNotesDB();
+            
+            console.log(`[IndexedDB Check] Found ${notes.length} notes in storage.`);
+            if (noteCountStatus) {
+                noteCountStatus.textContent = `當前筆記數量: ${notes.length} 條。`;
+            }
+
+            const scrollPosition = window.scrollY;
+            const notesContainer = document.getElementById('note-list');
+            
+            const sortBy = sortSelect.value; 
+
+            notes.sort((a, b) => {
+                let timeA, timeB;
+                if (sortBy.startsWith('created')) {
+                    timeA = a.created_at || a.timestamp || 0;
+                    timeB = b.created_at || b.timestamp || 0;
+                } else {
+                    timeA = a.updated_at || a.created_at || a.timestamp || 0;
+                    timeB = b.updated_at || b.created_at || b.timestamp || 0;
+                }
+                if (sortBy.endsWith('asc')) {
+                    return timeA - timeB; 
+                } else {
+                    return timeB - timeA; 
+                }
+            });
+
+            notesContainer.innerHTML = ''; 
+
+            if (notes.length === 0) {
+                notesContainer.innerHTML = '<p class="text-gray-500 text-center p-4">目前沒有任何筆記。點擊「新增記事」或「匯入」來開始吧！</p>';
+                hideNoteForm();
+                return;
+            }
+
+            notes.forEach((note) => {
+                const createdAt = note.created_at || note.timestamp;
+                const updatedAt = note.updated_at || note.timestamp;
+                const images = note.images || (note.image ? [note.image] : []);
+                notesContainer.appendChild(createNoteElement({
+                    id: note.id, 
+                    title: note.title, 
+                    content: note.content, 
+                    createdAt: createdAt,
+                    updatedAt: updatedAt,
+                    images: images
+                }));
+            });
+            
+            isEditing = false;
+            requestAnimationFrame(() => { window.scrollTo(0, scrollPosition); });
+        };
+
+        const createNoteElement = ({ id, title, content, createdAt, updatedAt, images }) => {
+            const noteCard = document.createElement('div');
+            noteCard.className = 'note-card bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 border-l-4 border-indigo-500 mb-4';
+            noteCard.dataset.noteId = id; 
+
+            let imagesHtml = '';
+            if (images && images.length > 0) {
+                imagesHtml = `<div class="flex space-x-3 overflow-x-auto custom-scrollbar mb-3 note-image-display py-1 pb-3">`;
+                // 迭代圖片時加入 data-image-index
+                images.forEach((img, index) => {
+                    imagesHtml += `<div class="flex-shrink-0 w-28 h-28 rounded-lg overflow-hidden border border-gray-300 shadow-sm group">
+                        <img src="${img}" data-image-index="${index}" class="w-full h-full object-cover cursor-zoom-in hover:opacity-90 transition lightbox-trigger" alt="筆記圖片">
+                    </div>`;
+                });
+                imagesHtml += `</div>`;
+            }
+
+            const createdStr = formatDate(createdAt);
+            const updatedStr = formatDate(updatedAt);
+            let dateHtml = `<div class="text-xs text-gray-400 border-t pt-2 mt-2 space-y-1">`;
+            dateHtml += `<div>建立於：${createdStr}</div>`;
+            
+            if (updatedAt && Math.abs(updatedAt - createdAt) > 1000) {
+                dateHtml += `<div>更新於：${updatedStr}</div>`;
+            }
+            dateHtml += `</div>`;
+
+            noteCard.innerHTML = `
+                <div class="header flex justify-between items-start mb-2">
+                    <h3 class="text-xl font-bold text-gray-800 break-words w-4/5" data-field="title">${title}</h3>
+                    <div class="actions flex space-x-2">
+                        <button class="edit-btn p-2 rounded-full bg-blue-100 text-blue-600 hover:bg-blue-200 transition duration-150" aria-label="編輯"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-7.586 10.586a2 2 0 01-3.376 0L1 14.5V17h2.5l-.586-.586a2 2 0 010-3.376zM15 6l-3-3L5 11l-2.5 5.5.5 1.5 1.5.5L11 15l7-7-3-3z"/></svg></button>
+                        <button class="delete-btn p-2 rounded-full bg-red-100 text-red-600 hover:bg-red-200 transition duration-150" aria-label="刪除" data-action="delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 112 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd" /></svg></button>
+                    </div>
+                </div>
+                <p class="text-gray-600 mb-3 whitespace-pre-wrap max-h-40 overflow-hidden" data-field="content">${content}</p>
+                ${imagesHtml}
+                ${dateHtml}
+            `;
+
+            noteCard.querySelectorAll('.lightbox-trigger').forEach(img => {
+                img.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const noteId = Number(noteCard.dataset.noteId);
+                    const index = Number(img.dataset.imageIndex);
+                    window.openLightbox(noteId, index); 
+                });
+            });
+
+            noteCard.querySelector('.delete-btn').addEventListener('click', () => {
+                showConfirmModal('確認刪除', '您確定要刪除這條筆記嗎？', () => deleteNote(Number(id)), '確認刪除');
+            });
+
+            const editButton = noteCard.querySelector('.edit-btn');
+            editButton.addEventListener('click', async (e) => {
+                const targetButton = e.currentTarget; 
+                if (!isEditing) {
+                    hideNoteForm();
+                    const noteId = Number(noteCard.dataset.noteId);
+                    const noteData = await getNoteByIdDB(noteId);
+                    if (noteData) toggleEditMode(noteCard, true, targetButton, noteData);
+                    else showModal('錯誤', '無法找到筆記資料。');
+                } else {
+                    showModal('警告', '請先完成當前筆記的編輯或儲存。');
+                }
+            });
+            return noteCard;
+        };
+        
+        const cleanupEditUI = (card) => { loadNotes(); }
+
+        const toggleEditMode = (card, enable, originalEditButton, noteData) => {
+            const id = Number(card.dataset.noteId);
+            const titleDisplay = card.querySelector('[data-field="title"]');
+            const contentDisplay = card.querySelector('[data-field="content"]');
+            const actionsDiv = card.querySelector('.actions');
+            const deleteButton = card.querySelector('[data-action="delete"]');
+
+            if (!titleDisplay || !contentDisplay || !actionsDiv || !deleteButton) {
+                console.error("DOM Error"); loadNotes(); return; 
+            }
+            
+            const originalTitle = noteData.title.trim();
+            const originalContent = noteData.content.trim();
+            let currentEditImages = noteData.images || (noteData.image ? [noteData.image] : []);
+            
+            if (enable) {
+                if (!originalEditButton) { loadNotes(); return; }
+                isEditing = true;
+                card.classList.add('border-purple-600', 'ring-4', 'ring-purple-200');
+                card.classList.remove('border-indigo-500', 'hover:shadow-xl');
+                originalEditButton.classList.add('hidden');
+                
+                const existingImagesDiv = card.querySelector('.note-image-display');
+                if(existingImagesDiv) existingImagesDiv.classList.add('hidden');
+
+                const titleInput = document.createElement('input');
+                titleInput.value = originalTitle;
+                titleInput.className = 'w-full h-10 text-xl font-bold border-2 border-purple-400 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600 editable-field';
+                
+                const contentTextarea = document.createElement('textarea');
+                contentTextarea.value = originalContent;
+                contentTextarea.className = 'w-full text-gray-600 border-2 border-purple-400 rounded-lg p-2 mb-3 resize-y h-32 focus:outline-none focus:ring-2 focus:ring-purple-600 editable-field';
+
+                titleDisplay.before(titleInput); titleDisplay.remove();
+                contentDisplay.before(contentTextarea); contentDisplay.remove();
+
+                const imageEditContainer = document.createElement('div');
+                imageEditContainer.className = 'mt-4 border-t pt-4 space-y-2 edit-image-container editable-field';
+                
+                const label = document.createElement('label');
+                label.className = 'block mb-2 text-sm font-medium text-gray-600';
+                label.textContent = '管理圖片';
+
+                const editImageInput = document.createElement('input');
+                editImageInput.type = 'file'; 
+                editImageInput.accept = 'image/*'; 
+                editImageInput.multiple = true;
+                editImageInput.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
+                
+                const editPreviewGrid = document.createElement('div');
+                editPreviewGrid.className = 'image-preview-grid mt-2'; 
+                
+                const renderEditPreview = () => {
+                    editPreviewGrid.innerHTML = '';
+                    if (currentEditImages.length === 0) {
+                        editPreviewGrid.innerHTML = '<p class="text-sm text-gray-400 col-span-full">目前沒有圖片。</p>';
+                        return;
+                    }
+                    currentEditImages.forEach((img, idx) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'image-thumbnail';
+                        wrapper.innerHTML = `<img src="${img}">`;
+                        
+                        const removeBtn = document.createElement('div');
+                        removeBtn.className = 'remove-img-btn';
+                        removeBtn.innerHTML = '✕';
+                        removeBtn.onclick = () => {
+                            currentEditImages.splice(idx, 1);
+                            renderEditPreview();
+                        };
+                        
+                        wrapper.appendChild(removeBtn);
+                        editPreviewGrid.appendChild(wrapper);
+                    });
+                };
+                
+                renderEditPreview();
+                
+                imageEditContainer.appendChild(label);
+                imageEditContainer.appendChild(editImageInput);
+                imageEditContainer.appendChild(editPreviewGrid);
+                
+                card.insertBefore(imageEditContainer, card.querySelector('.text-xs'));
+
+                editImageInput.addEventListener('change', async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        if (file && file.type.startsWith('image/')) {
+                            const base64 = await fileToDataURL(file);
+                            currentEditImages.push(base64);
+                        }
+                    }
+                    editImageInput.value = '';
+                    renderEditPreview();
+                });
+                
+                const saveButton = document.createElement('button');
+                saveButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
+                saveButton.className = 'save-btn p-2 rounded-full bg-green-500 text-white hover:bg-green-600 transition duration-150 temp-action-btn';
+                
+                const cancelButton = document.createElement('button');
+                cancelButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>`;
+                cancelButton.className = 'cancel-btn p-2 rounded-full bg-gray-300 text-gray-700 hover:bg-gray-400 transition duration-150 temp-action-btn';
+
+                actionsDiv.insertBefore(saveButton, deleteButton);
+                actionsDiv.insertBefore(cancelButton, deleteButton);
+
+                saveButton.addEventListener('click', () => {
+                    const newTitle = titleInput.value.trim();
+                    const newContent = contentTextarea.value.trim();
+                    if (!newTitle || !newContent) { showModal('警告', '標題與內容不能為空。'); return; }
+                    isEditing = false;
+                    updateNote(id, newTitle, newContent, currentEditImages); 
+                });
+                
+                cancelButton.addEventListener('click', () => {
+                    const currentTitle = titleInput.value.trim();
+                    const currentContent = contentTextarea.value.trim();
+                    const originalImagesJSON = JSON.stringify(noteData.images || (noteData.image ? [noteData.image] : []));
+                    const currentImagesJSON = JSON.stringify(currentEditImages);
+                    
+                    const hasChanged = 
+                        currentTitle !== originalTitle || 
+                        currentContent !== originalContent || 
+                        originalImagesJSON !== currentImagesJSON;
+
+                    if (hasChanged) {
+                        showConfirmModal('放棄變更', '您已修改內容，確定要放棄變更嗎？', () => {
+                            isEditing = false;
+                            cleanupEditUI(card);
+                        }, '放棄變更');
+                    } else {
+                        isEditing = false;
+                        cleanupEditUI(card);
+                    }
+                });
+
+                titleInput.focus();
+            }
+        };
+        
+        const renderNewNoteImagesPreview = () => {
+            const previewContainer = document.getElementById('image-preview');
+            previewContainer.className = 'image-preview-grid mb-3';
+            previewContainer.innerHTML = '';
+            
+            if (currentNewNoteImages.length === 0) {
+                return;
+            }
+
+            currentNewNoteImages.forEach((img, idx) => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'image-thumbnail';
+                wrapper.innerHTML = `<img src="${img}">`;
+                
+                const removeBtn = document.createElement('div');
+                removeBtn.className = 'remove-img-btn';
+                removeBtn.innerHTML = '✕';
+                removeBtn.onclick = () => {
+                    currentNewNoteImages.splice(idx, 1);
+                    renderNewNoteImagesPreview();
+                };
+                
+                wrapper.appendChild(removeBtn);
+                previewContainer.appendChild(wrapper);
+            });
+        };
+
+        const resetNewNoteImages = () => {
+            currentNewNoteImages = [];
+            renderNewNoteImagesPreview();
+            document.getElementById('image-input').value = '';
+        };
+
+        const hideNoteForm = () => {
+            noteFormContainer.classList.add('hidden');
+            toggleFormBtn.textContent = '新增記事';
+        };
+        const toggleNoteForm = () => {
+            if (isEditing) { showModal('警告', '請先完成當前筆記的編輯或儲存。'); return; }
+            if (noteFormContainer.classList.toggle('hidden')) {
+                toggleFormBtn.textContent = '新增記事';
+            } else {
+                document.getElementById('note-title').focus();
+                toggleFormBtn.textContent = '隱藏表單';
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            noteFormContainer = document.getElementById('note-form-container');
+            toggleFormBtn = document.getElementById('toggle-form-btn');
+            closeFormBtn = document.getElementById('close-form-btn');
+            sortSelect = document.getElementById('sort-select');
+            noteCountStatus = document.getElementById('note-count-status'); 
+
+            toggleFormBtn.addEventListener('click', toggleNoteForm);
+            closeFormBtn.addEventListener('click', hideNoteForm);
+            sortSelect.addEventListener('change', loadNotes);
+
+            loadNotes();
+            
+            const form = document.getElementById('note-form');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                createNote(document.getElementById('note-title').value.trim(), document.getElementById('note-content').value.trim());
+            });
+            
+            const imageInput = document.getElementById('image-input');
+            imageInput.multiple = true;
+            imageInput.addEventListener('change', async (e) => {
+                const files = Array.from(e.target.files);
+                for (const file of files) {
+                    if (file && file.type.startsWith('image/')) {
+                        const base64 = await fileToDataURL(file);
+                        currentNewNoteImages.push(base64);
+                    }
+                }
+                imageInput.value = '';
+                renderNewNoteImagesPreview();
+            });
+            
+            document.getElementById('remove-image-btn').style.display = 'none';
+        });
+
+        // --- 模態視窗函式 (略) ---
+        const showModal = (title, message) => {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-confirm-btn').classList.add('hidden');
+            document.getElementById('modal-ok-btn').classList.remove('hidden');
+            document.getElementById('modal-cancel-btn').classList.add('hidden'); 
+            document.getElementById('custom-modal').classList.remove('hidden');
+        };
+
+        const showConfirmModal = (title, message, onConfirm, confirmText = '確認刪除') => {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('modal-ok-btn').classList.add('hidden');
+            const confirmBtn = document.getElementById('modal-confirm-btn');
+            confirmBtn.textContent = confirmText; 
+            confirmBtn.classList.remove('hidden');
+            document.getElementById('modal-cancel-btn').classList.remove('hidden');
+            
+            confirmBtn.onclick = null;
+            const modal = document.getElementById('custom-modal');
+            confirmBtn.onclick = () => { onConfirm(); modal.classList.add('hidden'); };
+            modal.classList.remove('hidden');
+        };
+
+        document.getElementById('modal-ok-btn').addEventListener('click', () => document.getElementById('custom-modal').classList.add('hidden'));
+        document.getElementById('modal-cancel-btn').addEventListener('click', () => document.getElementById('custom-modal').classList.add('hidden'));
+    </script>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl font-extrabold text-indigo-700">本地檔案式記事本</h1>
+            <p id="storage-type-info" class="text-sm text-gray-500 mt-2 p-2 bg-white inline-block rounded-full shadow-inner">資料儲存在瀏覽器 IndexedDB 中。</p>
+            <p id="note-count-status" class="text-sm text-gray-500 mt-1 p-1 bg-white inline-block rounded-full shadow-inner">正在檢查儲存狀態...</p>
+        </header>
+
+        <!-- 控制列 (僅包含操作按鈕) -->
+        <div class="bg-white p-4 rounded-xl shadow-lg mb-6 border border-gray-100">
+            <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+                <button id="toggle-form-btn" class="w-full sm:w-auto py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg><span>新增記事</span>
+                </button>
+                <button id="export-btn" class="w-full sm:w-auto py-2 px-4 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 11.586V3a1 1 0 112 0v8.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg><span>匯出 (.zip)</span>
+                </button>
+                <button id="import-btn" class="w-full sm:w-auto py-2 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 8.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 6.414V14a1 1 0 11-2 0V6.414L7.707 8.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg><span>匯入 (.zip)</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="note-form-container" class="relative bg-white p-6 rounded-2xl shadow-xl mb-8 border border-gray-100 hidden">
+            <button id="close-form-btn" class="absolute top-3 right-3 p-2 text-gray-400 hover:text-gray-600 rounded-full transition duration-150" aria-label="關閉表單"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">新增筆記內容</h2>
+            <form id="note-form">
+                <input type="text" id="note-title" placeholder="請輸入標題" required class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800">
+                <textarea id="note-content" placeholder="請輸入筆記內容..." rows="4" required class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800 resize-y"></textarea>
+                <label class="block mb-2 text-sm font-medium text-gray-600">附加圖片 (可多選)</label>
+                <input type="file" id="image-input" accept="image/*" class="w-full p-2 mb-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 text-sm">
+                <div id="image-preview" class="mb-3"></div>
+                <button type="button" id="remove-image-btn" class="hidden text-red-500 hover:text-red-700 text-sm font-semibold p-1 rounded-md transition duration-150 mb-4">移除圖片</button>
+                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>儲存記事</span>
+                </button>
+            </form>
+        </div>
+
+        <div class="mb-8">
+            <!-- 列表標題區 (包含排序) -->
+            <div class="flex flex-wrap justify-between items-end mb-4 border-b pb-2 gap-2">
+                <h2 class="text-2xl font-semibold text-gray-700">我的筆記列表</h2>
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <label for="sort-select" class="text-sm text-gray-500 font-medium hidden sm:inline whitespace-nowrap">排序：</label>
+                    <select id="sort-select" class="w-full sm:w-auto p-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm cursor-pointer">
+                        <option value="updated_desc">更新日期 (新→舊)</option>
+                        <option value="updated_asc">更新日期 (舊→新)</option>
+                        <option value="created_desc">建立日期 (新→舊)</option>
+                        <option value="created_asc">建立日期 (舊→新)</option>
+                    </select>
+                </div>
+            </div>
+            <div id="note-list" class="space-y-4"><p class="text-gray-500 text-center p-4">正在載入筆記...</p></div>
+        </div>
+    </div>
+
+    <!-- Lightbox Modal (已設定手機版隱藏左右按鈕，並支援滑動) -->
+    <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4" aria-modal="true" role="dialog">
+        <!-- 點擊背景關閉 -->
+        <div class="absolute inset-0" onclick="window.closeLightbox()"></div> 
+        
+        <!-- 關閉按鈕 -->
+        <button class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-300 z-50" onclick="window.closeLightbox()">&times;</button>
+        
+        <!-- 上一張按鈕 (預設隱藏，僅在 sm (桌面) 螢幕上顯示) -->
+        <button id="lightbox-prev-btn" class="absolute left-4 z-50 p-3 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden sm:block" onclick="event.stopPropagation(); window.navigateLightbox(-1);" aria-label="上一張圖片">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        
+        <!-- 圖片本體 (加入了阻止事件傳播，避免點擊圖片關閉模態視窗) -->
+        <img id="lightbox-image" src="" alt="Full Screen Image" class="lightbox-img rounded-lg shadow-2xl relative z-40" onclick="event.stopPropagation()">
+
+        <!-- 下一張按鈕 (預設隱藏，僅在 sm (桌面) 螢幕上顯示) -->
+        <button id="lightbox-next-btn" class="absolute right-4 z-50 p-3 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden sm:block" onclick="event.stopPropagation(); window.navigateLightbox(1);" aria-label="下一張圖片">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+        </button>
+    </div>
+
+    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-transform duration-300">
+            <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-3">訊息</h3>
+            <p id="modal-message" class="text-gray-600 mb-6"></p>
+            <div class="flex justify-end space-x-3">
+                <button id="modal-ok-btn" class="hidden py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">確定</button>
+                <button id="modal-cancel-btn" class="hidden py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">取消</button>
+                <button id="modal-confirm-btn" class="hidden py-2 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150">確認刪除</button>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
