@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>金龍傳說老虎機</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #0f172a;
+        }
+
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+
+        @keyframes scroll-blur {
+            0% { transform: translateY(-15%); filter: blur(2px); opacity: 0.8; }
+            50% { transform: translateY(15%); filter: blur(4px); opacity: 0.6; }
+            100% { transform: translateY(-15%); filter: blur(2px); opacity: 0.8; }
+        }
+        .animate-reel-spin { animation: scroll-blur 0.15s linear infinite; }
+
+        @keyframes glow {
+            0%, 100% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5)); transform: scale(1); }
+            50% { filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1)); transform: scale(1.1); }
+        }
+        .animate-win { animation: glow 0.8s ease-in-out infinite; }
+
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; transform: scale(0.95); }
+
+        .game-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: #eab308; }
+        
+        .wheel-pointer { filter: drop-shadow(0 4px 4px rgba(0,0,0,0.5)); z-index: 50; }
+        
+        .bg-dragon-scale {
+            background-color: #000;
+            background-image: 
+                radial-gradient(circle at 100% 150%, #eab308 0%, transparent 50%),
+                radial-gradient(circle at 0% -50%, #b91c1c 0%, transparent 50%);
+        }
+    </style>
+</head>
+<body class="text-white">
+
+<div id="app" class="min-h-screen flex flex-col items-center justify-start relative">
+
+    <!-- 背景裝飾 -->
+    <div class="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+    <div class="absolute top-0 w-full h-64 bg-gradient-to-b from-purple-900/50 to-transparent z-0 pointer-events-none"></div>
+
+    <!-- 頂部導航組件 -->
+    <game-header :balance="balance" @go-home="goHome"></game-header>
+
+    <!-- 主內容區 -->
+    <main class="flex-1 w-full max-w-md flex flex-col items-center p-4 z-10 gap-6 transition-all duration-300">
+        
+        <!-- 大廳組件 -->
+        <lobby-view v-if="currentView === 'home'" @enter-game="enterGame"></lobby-view>
+
+        <!-- 老虎機組件 -->
+        <slot-game v-if="currentView === 'slots'" 
+                   :balance="balance" 
+                   @update-balance="updateBalance"
+                   @add-history="addHistory"
+                   @game-status="updateGameStatus">
+        </slot-game>
+
+        <!-- 輪盤組件 -->
+        <wheel-game v-if="currentView === 'wheel'" 
+                    :balance="balance" 
+                    @update-balance="updateBalance"
+                    @add-history="addHistory"
+                    @game-status="updateGameStatus">
+        </wheel-game>
+
+        <!-- 歷史紀錄組件 (共用) -->
+        <game-history v-if="currentView !== 'home'" :history="history"></game-history>
+
+    </main>
+
+    <!-- 底部導航組件 -->
+    <game-footer :current-view="currentView" @go-home="goHome"></game-footer>
+
+</div>
+
+<script>
+    const { createApp, ref, computed, defineComponent } = Vue;
+
+    // === 共用資料 ===
+    const SYMBOLS = [
+        { id: 1, icon: '🐲', name: '金龍', multiplier: 100, weight: 5, color: 'text-yellow-400' },
+        { id: 2, icon: '💎', name: '鑽石', multiplier: 50, weight: 10, color: 'text-cyan-300' },
+        { id: 3, icon: '7️⃣', name: '七七', multiplier: 20, weight: 20, color: 'text-red-500' },
+        { id: 4, icon: '🔔', name: '金鐘', multiplier: 10, weight: 30, color: 'text-yellow-600' },
+        { id: 5, icon: '🍉', name: '西瓜', multiplier: 5, weight: 40, color: 'text-green-500' },
+        { id: 6, icon: '🍒', name: '櫻桃', multiplier: 2, weight: 50, color: 'text-pink-500' },
+    ];
+
+    const WHEEL_SEGMENTS = [
+        { label: 'x10', value: 10, type: 'win', color: '#ef4444', textColor: 'text-white' },
+        { label: 'x0.5', value: 0.5, type: 'win', color: '#f97316', textColor: 'text-white' },
+        { label: 'x2', value: 2, type: 'win', color: '#eab308', textColor: 'text-black' },
+        { label: '沒中', value: 0, type: 'loss', color: '#64748b', textColor: 'text-white' },
+        { label: 'x5', value: 5, type: 'win', color: '#3b82f6', textColor: 'text-white' },
+        { label: 'x1.5', value: 1.5, type: 'win', color: '#8b5cf6', textColor: 'text-white' },
+        { label: 'x3', value: 3, type: 'win', color: '#d946ef', textColor: 'text-white' },
+        { label: '沒中', value: 0, type: 'loss', color: '#475569', textColor: 'text-white' },
+    ];
+
+    // === 組件 1: GameHeader ===
+    const GameHeader = defineComponent({
+        props: ['balance'],
+        template: `
+            <header class="w-full max-w-md flex justify-between items-center p-4 z-10 bg-slate-800/80 backdrop-blur-md border-b border-white/10 shadow-lg">
+                <div @click="$emit('go-home')" class="flex items-center gap-2 cursor-pointer group select-none transition-opacity hover:opacity-80 active:scale-95">
+                    <div class="w-8 h-8 bg-gradient-to-tr from-yellow-400 to-orange-600 rounded-full flex items-center justify-center text-xs font-bold shadow-[0_0_10px_rgba(234,179,8,0.5)] text-white group-hover:shadow-[0_0_15px_rgba(234,179,8,0.8)] transition-shadow">龍</div>
+                    <div class="flex flex-col">
+                        <span class="font-bold text-lg text-yellow-500 tracking-wider leading-none">金龍娛樂</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 bg-black/40 px-3 py-1 rounded-full border border-yellow-500/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                    <span class="font-mono text-yellow-400 font-bold text-lg">{{ balance.toLocaleString() }}</span>
+                </div>
+            </header>
+        `
+    });
+
+    // === 組件 2: GameFooter ===
+    const GameFooter = defineComponent({
+        props: ['currentView'],
+        template: `
+            <nav class="w-full max-w-md bg-slate-900 border-t border-slate-800 flex text-xs text-slate-500 pb-safe sticky bottom-0 z-50">
+                <div @click="$emit('go-home')" class="flex-1 py-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-800 transition-colors" :class="currentView === 'home' ? 'text-yellow-500' : 'text-slate-500'">
+                    <div class="w-6 h-6 rounded bg-yellow-500/20 flex items-center justify-center">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
+                    </div>
+                    <span>大廳</span>
+                </div>
+                <div class="flex-1 py-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-800 hover:text-slate-300 transition-colors">
+                    <div class="w-6 h-6 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2h-6c-2.71 0-4.8 2.37-4.8 5.38C7.2 10.74 10.33 13.06 12 13.91c1.67-.85 4.8-3.17 4.8-6.53C16.8 4.37 14.71 2 12 2"/></svg>
+                    </div>
+                    <span>活動</span>
+                </div>
+                 <div class="flex-1 py-3 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-slate-800 hover:text-slate-300 transition-colors">
+                    <div class="w-6 h-6 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+                    </div>
+                    <span>VIP</span>
+                </div>
+            </nav>
+        `
+    });
+
+    // === 組件 3: GameHistory ===
+    const GameHistory = defineComponent({
+        props: ['history'],
+        template: `
+            <div v-if="history.length > 0" class="w-full animate-fade-in">
+                <h3 class="text-xs text-slate-500 uppercase font-bold mb-2 ml-1">最近中獎</h3>
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <div v-for="h in history" :key="h.id" 
+                        class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-bold border transition-all"
+                        :class="h.isBigWin ? 'bg-yellow-900/30 border-yellow-500/50 text-yellow-400' : 'bg-slate-800 border-slate-700 text-slate-400'">
+                        +{{ h.amount }} <span class="text-[10px] opacity-70 ml-1">({{ h.game === 'wheel' ? '輪盤' : '老虎機' }})</span>
+                    </div>
+                </div>
+            </div>
+        `
+    });
+
+    // === 組件 4: PaytableModal ===
+    const PaytableModal = defineComponent({
+        props: ['show'],
+        emits: ['close'],
+        setup() { return { symbols: SYMBOLS } },
+        template: `
+            <transition name="fade">
+                <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" @click.self="$emit('close')">
+                    <div class="bg-slate-800 w-full max-w-sm rounded-2xl border border-slate-600 shadow-2xl overflow-hidden">
+                        <div class="bg-slate-700 p-4 flex justify-between items-center">
+                            <h2 class="font-bold text-white flex items-center gap-2">賠率表 (3個相同)</h2>
+                            <button @click="$emit('close')" class="text-slate-400 hover:text-white">✕</button>
+                        </div>
+                        <div class="p-4 space-y-2 max-h-[60vh] overflow-y-auto">
+                            <div v-for="s in symbols" :key="s.id" class="flex items-center justify-between p-2 bg-slate-900/50 rounded-lg border border-slate-700">
+                                <div class="flex items-center gap-3">
+                                    <span class="text-2xl">{{ s.icon }}</span>
+                                    <span class="font-bold" :class="s.color">{{ s.name }}</span>
+                                </div>
+                                <span class="font-mono text-white font-bold">x {{ s.multiplier }}</span>
+                            </div>
+                        </div>
+                        <button @click="$emit('close')" class="w-full py-4 bg-slate-700 text-slate-300 font-bold hover:bg-slate-600 transition-colors border-t border-slate-600">關閉</button>
+                    </div>
+                </div>
+            </transition>
+        `
+    });
+
+    // === 組件 5: LobbyView ===
+    const LobbyView = defineComponent({
+        emits: ['enter-game'],
+        template: `
+            <div class="w-full animate-fade-in flex flex-col gap-6">
+                <!-- Banner -->
+                <div class="w-full h-48 rounded-2xl flex flex-col items-center justify-center shadow-2xl border-2 border-yellow-600/50 relative overflow-hidden text-center group bg-dragon-scale">
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/black-scales.png')] opacity-30 mix-blend-overlay"></div>
+                    <div class="absolute -top-20 -left-20 w-40 h-40 bg-yellow-500/30 blur-3xl rounded-full animate-pulse"></div>
+                    <div class="absolute -bottom-20 -right-20 w-40 h-40 bg-red-600/30 blur-3xl rounded-full animate-pulse delay-75"></div>
+                    <div class="absolute top-4 left-4 text-5xl filter drop-shadow-[0_0_5px_rgba(234,179,8,0.8)] opacity-90 transform -scale-x-100">🐉</div>
+                    <div class="absolute top-4 right-4 text-5xl filter drop-shadow-[0_0_5px_rgba(234,179,8,0.8)] opacity-90">🐉</div>
+                    <div class="relative z-10 p-6 flex flex-col items-center mt-2">
+                        <h1 class="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 via-yellow-400 to-yellow-700 drop-shadow-[0_4px_4px_rgba(0,0,0,0.9)] mb-2 tracking-widest font-serif">金龍傳說</h1>
+                        <div class="h-0.5 w-32 bg-gradient-to-r from-transparent via-yellow-500 to-transparent mb-3"></div>
+                        <div class="bg-black/60 px-4 py-1.5 rounded-full border border-yellow-500/40 backdrop-blur-sm shadow-lg flex items-center gap-2">
+                            <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                            <p class="text-xs text-yellow-100 font-bold tracking-wide">即刻開戰 • 贏取億萬彩金</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 遊戲列表 -->
+                <div>
+                    <h2 class="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                        <span class="w-1 h-5 bg-yellow-500 rounded-full"></span>
+                        熱門遊戲
+                    </h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div @click="$emit('enter-game', 'slots')" class="game-card bg-slate-800 rounded-xl border border-slate-700 cursor-pointer transition-all duration-300 overflow-hidden group relative">
+                            <div class="h-24 bg-gradient-to-b from-yellow-900 to-slate-900 flex items-center justify-center relative">
+                                <span class="text-5xl group-hover:scale-110 transition-transform duration-300">🐲</span>
+                                <div class="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">HOT</div>
+                            </div>
+                            <div class="p-3 text-center">
+                                <h3 class="font-bold text-yellow-500 group-hover:text-yellow-400">金龍傳說</h3>
+                                <p class="text-xs text-slate-500 mt-1">累積獎金高達 5000x</p>
+                            </div>
+                        </div>
+                        <div @click="$emit('enter-game', 'wheel')" class="game-card bg-slate-800 rounded-xl border border-slate-700 cursor-pointer transition-all duration-300 overflow-hidden group relative">
+                             <div class="h-24 bg-gradient-to-b from-green-900 to-slate-900 flex items-center justify-center relative">
+                                <span class="text-5xl group-hover:rotate-180 transition-transform duration-700">🎡</span>
+                                 <div class="absolute top-2 right-2 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">NEW</div>
+                            </div>
+                            <div class="p-3 text-center">
+                                <h3 class="font-bold text-green-400 group-hover:text-green-300">幸運輪盤</h3>
+                                <p class="text-xs text-slate-500 mt-1">經典玩法 倍率翻天</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden relative grayscale opacity-70">
+                             <div class="absolute inset-0 z-10 bg-black/40 flex items-center justify-center"><span class="bg-slate-700 text-slate-300 text-xs px-2 py-1 rounded font-bold border border-slate-500">敬請期待</span></div>
+                            <div class="h-24 bg-gradient-to-b from-blue-900 to-slate-900 flex items-center justify-center"><span class="text-5xl">🃏</span></div>
+                            <div class="p-3 text-center"><h3 class="font-bold text-slate-400">德州撲克</h3><p class="text-xs text-slate-600 mt-1">真人對戰</p></div>
+                        </div>
+                        <div class="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden relative grayscale opacity-70">
+                             <div class="absolute inset-0 z-10 bg-black/40 flex items-center justify-center"><span class="bg-slate-700 text-slate-300 text-xs px-2 py-1 rounded font-bold border border-slate-500">敬請期待</span></div>
+                            <div class="h-24 bg-gradient-to-b from-red-900 to-slate-900 flex items-center justify-center"><span class="text-5xl">⚽</span></div>
+                            <div class="p-3 text-center"><h3 class="font-bold text-slate-400">體育博彩</h3><p class="text-xs text-slate-600 mt-1">即時賽事</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `
+    });
+
+    // === 組件 6: SlotGame (老虎機) ===
+    const SlotGame = defineComponent({
+        props: ['balance'],
+        emits: ['update-balance', 'add-history', 'game-status'],
+        components: { PaytableModal },
+        setup(props, { emit }) {
+            const bet = ref(100);
+            const reels = ref([SYMBOLS[0], SYMBOLS[0], SYMBOLS[0]]);
+            const isSpinning = ref(false);
+            const spinningReels = ref([false, false, false]);
+            const winAmount = ref(0);
+            const message = ref('祝您好運！');
+            const showPaytable = ref(false);
+            const intervalIds = [null, null, null];
+
+            const getRandomSymbol = () => {
+                const totalWeight = SYMBOLS.reduce((acc, symbol) => acc + symbol.weight, 0);
+                let random = Math.random() * totalWeight;
+                for (const symbol of SYMBOLS) {
+                    if (random < symbol.weight) { return symbol; }
+                    random -= symbol.weight;
+                }
+                return SYMBOLS[SYMBOLS.length - 1];
+            };
+
+            const adjustBet = (amount) => {
+                if (isSpinning.value) return;
+                if (bet.value + amount < 10) return;
+                if (bet.value + amount > 1000) return;
+                bet.value += amount;
+            };
+
+            const maxBet = () => {
+                if (isSpinning.value) return;
+                bet.value = props.balance >= 500 ? 500 : props.balance;
+            };
+
+            const handleSpin = () => {
+                if (isSpinning.value) return;
+                if (props.balance < bet.value) {
+                    message.value = '餘額不足，請充值！';
+                    return;
+                }
+                
+                emit('update-balance', -bet.value); // 扣款
+                emit('game-status', true); // 通知正在轉動
+                winAmount.value = 0;
+                message.value = '好運轉動中...';
+                isSpinning.value = true;
+                spinningReels.value = [true, true, true];
+
+                [0, 1, 2].forEach(index => {
+                    intervalIds[index] = setInterval(() => { reels.value[index] = getRandomSymbol(); }, 100);
+                });
+
+                const finalReels = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
+                const stopDelay = 1000;
+                setTimeout(() => stopReel(0, finalReels[0]), stopDelay);
+                setTimeout(() => stopReel(1, finalReels[1]), stopDelay + 500);
+                setTimeout(() => stopReel(2, finalReels[2]), stopDelay + 1000);
+            };
+
+            const stopReel = (index, finalSymbol) => {
+                clearInterval(intervalIds[index]);
+                spinningReels.value[index] = false;
+                reels.value[index] = finalSymbol;
+                if (index === 2) {
+                    calculateResult();
+                    isSpinning.value = false;
+                    emit('game-status', false); // 轉動結束
+                }
+            };
+
+            const calculateResult = () => {
+                const [r1, r2, r3] = reels.value;
+                let win = 0;
+                let msg = '再接再厲...';
+
+                if (r1.id === r2.id && r2.id === r3.id) {
+                    win = bet.value * r1.multiplier;
+                    msg = `大獎！恭喜獲得 ${r1.name} x3！`;
+                    emit('add-history', win, true, 'slots');
+                } else if (r1.id === r2.id) {
+                    win = Math.floor(bet.value * (r1.multiplier / 5));
+                    msg = `不錯喔！2個 ${r1.name}`;
+                    emit('add-history', win, false, 'slots');
+                } else if (r2.id === r3.id) {
+                    win = Math.floor(bet.value * (r2.multiplier / 5));
+                    msg = `不錯喔！2個 ${r2.name}`;
+                    emit('add-history', win, false, 'slots');
+                } else if (r1.id === r3.id) {
+                    win = Math.floor(bet.value * 0.5);
+                    msg = `幸運！頭尾 ${r1.name}`;
+                    emit('add-history', win, false, 'slots');
+                }
+
+                if (win > 0) {
+                    emit('update-balance', win);
+                    winAmount.value = win;
+                    message.value = msg;
+                } else {
+                    message.value = '沒中獎，下次一定行！';
+                }
+            };
+
+            return {
+                bet, reels, isSpinning, spinningReels, winAmount, message, showPaytable,
+                handleSpin, adjustBet, maxBet, getRandomSymbol
+            };
+        },
+        template: `
+            <div class="w-full flex flex-col items-center gap-6 animate-fade-in">
+                <div class="h-10 w-full bg-black/60 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden px-4">
+                    <span class="text-sm font-medium transition-all duration-300 whitespace-nowrap" :class="winAmount > 0 ? 'text-yellow-400 scale-110' : 'text-gray-300'">{{ message }}</span>
+                </div>
+
+                <div class="relative p-3 bg-gradient-to-b from-yellow-700 via-yellow-500 to-yellow-800 rounded-3xl shadow-2xl border-4 border-yellow-600 w-full">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-black px-4 py-1 rounded-full border border-yellow-500 text-xs text-yellow-500 font-bold uppercase tracking-widest shadow-lg z-20">Golden Dragon</div>
+                    <div class="bg-black rounded-xl overflow-hidden border-4 border-black shadow-inner flex gap-1 p-1 relative h-48 sm:h-56">
+                        <div class="absolute top-1/2 left-0 w-full h-1 bg-red-600/50 z-20 pointer-events-none shadow-[0_0_10px_rgba(255,0,0,0.8)]"></div>
+                        <div v-for="(symbol, index) in reels" :key="index" class="flex-1 bg-slate-800 relative overflow-hidden rounded-md border border-slate-700 flex flex-col items-center justify-center">
+                            <div v-if="spinningReels[index]" class="absolute inset-0 flex flex-col items-center justify-center animate-reel-spin">
+                                <div class="flex flex-col gap-8 opacity-70 blur-sm">
+                                    <span class="text-5xl filter grayscale opacity-50">{{ getRandomSymbol().icon }}</span>
+                                    <span class="text-5xl">{{ symbol.icon }}</span>
+                                    <span class="text-5xl filter grayscale opacity-50">{{ getRandomSymbol().icon }}</span>
+                                </div>
+                            </div>
+                            <div v-else class="flex flex-col items-center justify-center transition-all duration-300 transform" :class="{'animate-win': winAmount > 0 && !isSpinning}">
+                                <span class="text-6xl sm:text-7xl drop-shadow-lg filter">{{ symbol.icon }}</span>
+                                <span class="text-xs mt-2 text-slate-400 font-bold uppercase tracking-wide">{{ symbol.name }}</span>
+                            </div>
+                            <div class="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent pointer-events-none z-10"></div>
+                        </div>
+                    </div>
+                    <div class="mt-2 flex justify-between items-center px-2">
+                        <div class="text-xs text-yellow-900 font-bold">WIN PAID</div>
+                        <div class="font-mono text-2xl font-black transition-all duration-300" :class="winAmount > 0 ? 'text-white drop-shadow-[0_0_5px_rgba(255,255,0,0.8)]' : 'text-yellow-900/50'">{{ winAmount }}</div>
+                    </div>
+                </div>
+
+                <div class="w-full bg-slate-800/90 rounded-2xl p-4 border border-slate-700 shadow-xl backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-col"><span class="text-xs text-slate-400 uppercase font-bold">下注金額</span><span class="text-xl font-mono font-bold text-white">{{ bet }}</span></div>
+                        <div class="flex gap-2">
+                            <button @click="adjustBet(-10)" :disabled="isSpinning" class="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center active:scale-95 disabled:opacity-50 text-white font-bold hover:bg-slate-600">-</button>
+                            <button @click="adjustBet(10)" :disabled="isSpinning" class="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center active:scale-95 disabled:opacity-50 text-white font-bold hover:bg-slate-600">+</button>
+                            <button @click="maxBet" :disabled="isSpinning" class="px-3 h-10 rounded-full bg-slate-700 border border-slate-600 text-xs font-bold text-yellow-500 uppercase active:scale-95 disabled:opacity-50 hover:bg-slate-600">Max</button>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 items-center">
+                        <button @click="showPaytable = true" class="p-3 rounded-xl bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        </button>
+                        <button @click="handleSpin" :disabled="isSpinning || balance < bet" class="flex-1 h-16 rounded-2xl text-2xl font-black tracking-widest uppercase shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 group" :class="isSpinning ? 'bg-gray-600 cursor-not-allowed text-gray-400 border-b-0 translate-y-1' : 'bg-gradient-to-b from-yellow-400 to-orange-600 border-b-4 border-orange-800 text-white hover:from-yellow-300 hover:to-orange-500'">
+                            <span v-if="isSpinning"><svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74-2.74L3 12"/></svg></span>
+                            <span v-else>SPIN</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <paytable-modal :show="showPaytable" @close="showPaytable = false"></paytable-modal>
+            </div>
+        `
+    });
+
+    // === 組件 7: WheelGame (輪盤) ===
+    const WheelGame = defineComponent({
+        props: ['balance'],
+        emits: ['update-balance', 'add-history', 'game-status'],
+        setup(props, { emit }) {
+            const bet = ref(100);
+            const isSpinning = ref(false);
+            const winAmount = ref(0);
+            const message = ref('祝您好運！');
+            const wheelRotation = ref(0);
+            const wheelSegments = WHEEL_SEGMENTS;
+
+            const wheelBackground = computed(() => {
+                const step = 100 / wheelSegments.length;
+                let bg = 'conic-gradient(';
+                wheelSegments.forEach((seg, i) => { bg += `${seg.color} ${i * step}% ${(i + 1) * step}%,`; });
+                return bg.slice(0, -1) + ')';
+            });
+
+            const adjustBet = (amount) => {
+                if (isSpinning.value) return;
+                if (bet.value + amount < 10) return;
+                if (bet.value + amount > 1000) return;
+                bet.value += amount;
+            };
+
+            const maxBet = () => {
+                if (isSpinning.value) return;
+                bet.value = props.balance >= 500 ? 500 : props.balance;
+            };
+
+            const handleSpin = () => {
+                if (isSpinning.value) return;
+                if (props.balance < bet.value) {
+                    message.value = '餘額不足，請充值！';
+                    return;
+                }
+
+                emit('update-balance', -bet.value);
+                emit('game-status', true);
+                winAmount.value = 0;
+                message.value = '幸運輪盤轉動中...';
+                isSpinning.value = true;
+
+                const segmentIndex = Math.floor(Math.random() * wheelSegments.length);
+                const segment = wheelSegments[segmentIndex];
+                const segmentAngle = 360 / wheelSegments.length;
+                const centerOffset = segmentAngle / 2;
+                const randomJitter = (Math.random() - 0.5) * (segmentAngle * 0.6);
+                const targetAngleInOneCircle = 360 - (segmentIndex * segmentAngle + centerOffset);
+                const currentMod = wheelRotation.value % 360;
+                const distToNextZero = 360 - currentMod;
+                const finalTarget = wheelRotation.value + distToNextZero + (360 * 5) + targetAngleInOneCircle + randomJitter;
+                
+                wheelRotation.value = finalTarget;
+
+                setTimeout(() => {
+                    isSpinning.value = false;
+                    emit('game-status', false);
+                    const win = bet.value * segment.value;
+                    if (win > 0) {
+                        emit('update-balance', win);
+                        winAmount.value = win;
+                        message.value = `恭喜！獲得 ${segment.label} (${win})`;
+                        emit('add-history', win, win >= bet.value * 5, 'wheel');
+                    } else {
+                        message.value = '差一點點，再試一次！';
+                    }
+                }, 4000);
+            };
+
+            return {
+                bet, isSpinning, winAmount, message, wheelRotation, wheelSegments, wheelBackground,
+                handleSpin, adjustBet, maxBet
+            };
+        },
+        template: `
+            <div class="w-full flex flex-col items-center gap-6 animate-fade-in">
+                <div class="h-10 w-full bg-black/60 rounded-lg border border-white/10 flex items-center justify-center overflow-hidden px-4">
+                    <span class="text-sm font-medium transition-all duration-300 whitespace-nowrap" :class="winAmount > 0 ? 'text-green-400 scale-110' : 'text-gray-300'">{{ message }}</span>
+                </div>
+
+                <div class="relative w-80 h-80 sm:w-96 sm:h-96 flex items-center justify-center">
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 wheel-pointer z-20">
+                        <div class="w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[30px] border-t-red-600"></div>
+                    </div>
+                    <div class="w-full h-full rounded-full bg-gradient-to-b from-yellow-600 to-yellow-800 p-3 shadow-2xl relative">
+                        <div class="w-full h-full rounded-full overflow-hidden relative transition-transform duration-[4000ms] ease-out border-4 border-yellow-900" :style="{ transform: 'rotate(' + wheelRotation + 'deg)' }">
+                            <div class="absolute inset-0 w-full h-full" :style="{ background: wheelBackground }"></div>
+                            <div v-for="(seg, i) in wheelSegments" :key="'line-'+i" class="absolute top-0 left-1/2 w-0.5 h-1/2 bg-black/20 origin-bottom" :style="{ transform: 'translateX(-50%) rotate(' + (i * (360/wheelSegments.length)) + 'deg)' }"></div>
+                            <div v-for="(seg, i) in wheelSegments" :key="'text-'+i" class="absolute top-0 left-1/2 w-full h-1/2 origin-bottom flex justify-center pt-8 pointer-events-none" :style="{ transform: 'translateX(-50%) rotate(' + (i * (360/wheelSegments.length) + (360/wheelSegments.length/2)) + 'deg)' }">
+                                 <div class="flex flex-col items-center gap-1">
+                                     <span class="text-lg font-black text-white drop-shadow-md whitespace-nowrap" :class="seg.textColor || 'text-white'">{{ seg.label }}</span>
+                                     <span v-if="seg.icon" class="text-xl filter drop-shadow">{{ seg.icon }}</span>
+                                 </div>
+                            </div>
+                        </div>
+                        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-gradient-to-br from-yellow-400 to-yellow-700 rounded-full shadow-lg border-4 border-yellow-200 flex items-center justify-center z-10"><span class="text-2xl">🎡</span></div>
+                    </div>
+                </div>
+
+                <div class="w-full bg-slate-800/90 rounded-2xl p-4 border border-slate-700 shadow-xl backdrop-blur-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex flex-col"><span class="text-xs text-slate-400 uppercase font-bold">下注金額</span><span class="text-xl font-mono font-bold text-white">{{ bet }}</span></div>
+                        <div class="flex gap-2">
+                            <button @click="adjustBet(-10)" :disabled="isSpinning" class="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center active:scale-95 disabled:opacity-50 text-white font-bold hover:bg-slate-600">-</button>
+                            <button @click="adjustBet(10)" :disabled="isSpinning" class="w-10 h-10 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center active:scale-95 disabled:opacity-50 text-white font-bold hover:bg-slate-600">+</button>
+                            <button @click="maxBet" :disabled="isSpinning" class="px-3 h-10 rounded-full bg-slate-700 border border-slate-600 text-xs font-bold text-yellow-500 uppercase active:scale-95 disabled:opacity-50 hover:bg-slate-600">Max</button>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 items-center">
+                        <button @click="handleSpin" :disabled="isSpinning || balance < bet" class="w-full h-16 rounded-2xl text-2xl font-black tracking-widest uppercase shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 group" :class="isSpinning ? 'bg-gray-600 cursor-not-allowed text-gray-400 border-b-0 translate-y-1' : 'bg-gradient-to-b from-green-500 to-green-700 border-b-4 border-green-900 text-white hover:from-green-400 hover:to-green-600'">
+                            <span v-if="isSpinning">轉動中...</span>
+                            <span v-else>開始轉動</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `
+    });
+
+    // === 主程式 App ===
+    const App = defineComponent({
+        components: {
+            GameHeader, GameFooter, LobbyView, SlotGame, WheelGame, GameHistory
+        },
+        setup() {
+            const currentView = ref('home');
+            const balance = ref(5000);
+            const history = ref([]);
+            const isGameSpinning = ref(false); // 全域鎖定，防止轉動中切換遊戲
+
+            const goHome = () => {
+                if (isGameSpinning.value) {
+                    alert('請等待遊戲結束再離開！');
+                    return;
+                }
+                currentView.value = 'home';
+            };
+
+            const enterGame = (gameType) => {
+                currentView.value = gameType;
+            };
+
+            const updateBalance = (amount) => {
+                balance.value += amount;
+            };
+
+            const addHistory = (amount, isBigWin, game) => {
+                history.value = [{ amount, isBigWin, game, id: Date.now() }, ...history.value].slice(0, 5);
+            };
+
+            const updateGameStatus = (isSpinning) => {
+                isGameSpinning.value = isSpinning;
+            };
+
+            return {
+                currentView, balance, history,
+                goHome, enterGame, updateBalance, addHistory, updateGameStatus
+            };
+        }
+    });
+
+    createApp(App).mount('#app');
+</script>
+
+</body>
+</html>

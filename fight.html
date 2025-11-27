@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>復刻快打之王 - 討伐戰</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Noto+Sans+TC:wght@700&display=swap');
@@ -19,6 +19,7 @@
             width: 100vw;
             overflow: hidden;
             font-family: 'Noto Sans TC', sans-serif;
+            touch-action: manipulation;
         }
 
         #game-container {
@@ -40,6 +41,51 @@
             image-rendering: pixelated; 
         }
 
+        /* ================= GLOBAL UI BUTTONS (TOP RIGHT) ================= */
+        .top-right-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 200;
+        }
+
+        .tr-btn {
+            background: rgba(34, 34, 34, 0.9); 
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 8px 15px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-family: 'Noto Sans TC';
+            font-weight: bold;
+            transition: all 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .tr-btn:hover {
+            background: #555;
+            color: #fff;
+            border-color: #fff;
+            transform: translateY(-2px);
+        }
+
+        .tr-btn.active {
+            background: #2e7d32;
+            color: #fff;
+            border-color: #69f0ae;
+        }
+        .tr-btn.active:hover {
+            background: #388e3c;
+        }
+
+        .btn-danger:hover {
+            background: #d32f2f;
+            border-color: #ff5252;
+        }
+
         /* ================= LOBBY STYLES ================= */
         #lobby-view {
             position: absolute;
@@ -50,71 +96,93 @@
             z-index: 100;
             display: flex;
             flex-direction: column;
-            justify-content: center; /* 改為置中，確保上下都有空間 */
             align-items: center;
             background: rgba(0, 0, 0, 0.6); 
             backdrop-filter: blur(3px);
-            padding: 20px 40px; /* 上下留白縮小但保持均勻 */
+            padding: 30px 40px; 
             box-sizing: border-box;
+        }
+
+        .lobby-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 15px; 
+            flex-shrink: 0;
         }
 
         .lobby-title {
             font-family: 'Press Start 2P', cursive;
-            font-size: 28px; /* 字體稍微縮小 */
+            font-size: 28px; 
             color: #ffeb3b;
             text-shadow: 4px 4px 0 #000;
-            margin-bottom: 15px; /* 縮小標題下方間距 */
+            margin: 0;
             text-transform: uppercase;
             letter-spacing: 2px;
-            flex-shrink: 0;
         }
 
-        .lobby-main {
+        .header-buttons {
             display: flex;
-            width: 100%;
-            height: auto;
-            gap: 40px;
-            justify-content: center;
+            gap: 10px;
         }
 
-        /* Left Side: Hero Select */
-        .section-left {
-            flex: 1;
-            padding-right: 20px;
+        /* Main Grid Layout */
+        .lobby-grid {
             display: flex;
             flex-direction: column;
-            align-items: center; 
-            gap: 10px; /* 區塊間距縮小 */
-        }
-
-        .section-title {
-            font-family: 'Noto Sans TC';
-            font-size: 20px; /* 字體稍微縮小 */
-            color: #4fc3f7;
-            padding-bottom: 5px;
-            margin-bottom: 5px;
             width: 100%;
-            text-align: center;
-            text-shadow: 2px 2px 0 #000;
+            height: 100%;
+            gap: 30px; 
+            justify-content: flex-start; 
         }
 
-        /* Hero Carousel */
-        .hero-selector {
+        /* -- Upper Section: Hero & Stats -- */
+        .hero-section {
+            display: flex;
+            align-items: center; 
+            justify-content: center;
+            background: rgba(26, 26, 26, 0.85);
+            border-radius: 12px;
+            padding: 15px 30px; 
+            gap: 40px; 
+            border: 1px solid #444;
+            flex-shrink: 0; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin-top: 0px;
+            margin-bottom: 10px;
+        }
+
+        /* Hero Left: Portrait & Nav */
+        .hero-display-wrapper {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            background: rgba(34, 34, 34, 0.9);
-            border-radius: 10px;
-            padding: 10px; /* 內距縮小 */
-            box-sizing: border-box;
-            margin-bottom: 5px;
+            gap: 15px;
         }
+
+        .hero-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 180px;
+        }
+
+        .lobby-hero-portrait {
+            width: 90px; 
+            height: 90px;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            overflow: hidden;
+            background: #555;
+            margin-bottom: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        }
+        .lobby-hero-portrait canvas { width: 100%; height: 100%; object-fit: cover; }
 
         .nav-btn {
             background: rgba(255, 255, 255, 0.1);
             color: #4fc3f7;
-            border: none;
+            border: 1px solid #4fc3f7;
             width: 30px;
             height: 30px;
             border-radius: 50%;
@@ -127,250 +195,215 @@
         }
         .nav-btn:hover { background: #4fc3f7; color: #000; }
 
-        .selected-hero-display {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        .lobby-hero-portrait {
-            width: 80px; /* 頭像縮小 */
-            height: 80px;
-            border-radius: 50%;
-            border: 4px solid #fff;
-            overflow: hidden;
-            background: #555;
-            margin-bottom: 5px;
-        }
-        .lobby-hero-portrait canvas { width: 100%; height: 100%; object-fit: cover; }
-
         .lobby-hero-name {
-            font-size: 18px;
-            margin: 0 0 2px 0;
+            font-size: 20px;
+            margin: 0 0 5px 0;
             color: #fff;
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
         }
 
         .lobby-hero-meta {
-            font-size: 10px; 
+            font-size: 12px; 
             color: #aaa;
             font-family: 'Press Start 2P';
             display: flex;
-            flex-direction: column; 
+            flex-direction: column;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
+            width: 100%;
         }
         .meta-row {
             display: flex;
             gap: 15px;
+            align-items: baseline;
         }
-        .meta-val { color: #ffeb3b; }
-        .hp-val { color: #ff5252; } 
-        .exp-val { color: #00e676; }
+        .meta-val { color: #ffeb3b; font-family: 'Noto Sans TC'; font-weight: bold; font-size: 14px; }
+        .hp-val { color: #ff5252; font-family: 'Noto Sans TC'; font-weight: bold; font-size: 14px; } 
+        .exp-val { color: #00e676; font-family: 'Noto Sans TC'; font-weight: bold; font-size: 14px; }
 
-        /* Stats Editor */
+        .lvl-controls { display: none; margin-left: 5px; }
+        .lvl-btn { background: #444; color: #fff; border: 1px solid #666; width: 18px; height: 18px; font-size: 12px; cursor: pointer; padding: 0; border-radius: 3px; vertical-align: middle;}
+        .lvl-btn:hover { background: #666; }
+
+        /* Hero Right: Stats Editor */
+        .hero-stats-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-width: 300px;
+        }
+
         .stats-editor {
-            width: 100%;
-            background: rgba(26, 26, 26, 0.9);
+            background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
-            padding: 10px; /* 內距縮小 */
-            box-sizing: border-box;
+            padding: 12px; 
+            border: 1px solid #333;
         }
 
         .stat-points-display {
-            text-align: center;
             color: #ffeb3b;
-            font-size: 12px;
-            margin-bottom: 8px;
+            font-size: 14px;
+            margin-bottom: 10px;
             font-family: 'Noto Sans TC';
-            background: rgba(255, 235, 59, 0.1);
-            padding: 3px;
-            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
         }
 
         .stat-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px; /* 行距縮小 */
+            margin-bottom: 8px; 
             font-family: 'Noto Sans TC';
-            font-size: 14px;
+            font-size: 16px;
             color: #ddd;
         }
         .stat-row:last-child { margin-bottom: 0; }
 
-        /* Label Wrapper for Help Button */
-        .stat-label-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .help-btn {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #555;
-            color: #fff;
-            border: none;
-            font-size: 9px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: monospace;
-            padding: 0;
-        }
-        .help-btn:hover { background: #4fc3f7; border-color: #fff; color: #000; }
-
-        .stat-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .stat-btn {
-            width: 22px;
-            height: 22px;
-            background: #333;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-        .stat-btn:hover { background: #555; color: #fff; }
-        .stat-btn:active { transform: scale(0.9); }
-        .stat-btn:disabled { color: #555; cursor: not-allowed; }
-
-        .stat-value-display {
-            min-width: 30px; 
-            text-align: center;
-            font-family: 'Press Start 2P';
-            color: #ffeb3b;
-            font-size: 12px;
-            white-space: nowrap;
-        }
+        .stat-label-wrapper { display: flex; align-items: center; gap: 10px; }
+        .help-btn { width: 18px; height: 18px; border-radius: 50%; background: #555; color: #fff; border: none; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+        .help-btn:hover { background: #4fc3f7; color: #000; }
         
-        /* Detail Stats Button */
+        .stat-controls { display: flex; align-items: center; gap: 15px; }
+        .stat-btn { width: 26px; height: 26px; background: #333; border: 1px solid #555; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-weight: bold; font-size: 16px; }
+        .stat-btn:hover { background: #555; border-color: #fff; }
+        .stat-btn:disabled { color: #444; border-color: #333; cursor: not-allowed; }
+        
+        .stat-value-display { min-width: 35px; text-align: center; font-weight: bold; color: #ffeb3b; font-size: 18px; }
+
         .detail-stats-btn {
-            width: 100%;
-            margin-top: 8px;
-            background: #333;
-            color: #4fc3f7;
-            border: 1px solid #4fc3f7;
-            padding: 6px;
+            margin-top: 12px;
+            background: transparent;
+            color: #aaa;
+            border: 1px solid #555;
+            padding: 8px;
             font-size: 12px;
             cursor: pointer;
-            border-radius: 5px;
-            font-family: 'Noto Sans TC';
+            border-radius: 4px;
+            width: 100%;
             transition: all 0.2s;
         }
-        .detail-stats-btn:hover {
-            background: #4fc3f7;
-            color: #000;
-        }
+        .detail-stats-btn:hover { border-color: #4fc3f7; color: #4fc3f7; background: rgba(79, 195, 247, 0.1); }
 
-        /* Info Modal & Detail Modal */
-        .info-modal {
-            display: none; 
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: #222;
-            border: 2px solid #ffeb3b;
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 200;
-            width: 300px;
-            box-shadow: 0 0 30px rgba(0,0,0,0.8);
-            text-align: center;
-        }
-        .info-modal.show { display: block; }
-        
-        .info-close {
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            cursor: pointer;
-            color: #aaa;
-            font-size: 20px;
-        }
-        .info-close:hover { color: #fff; }
-        .info-title { color: #4fc3f7; font-size: 18px; margin-bottom: 20px; }
-        .info-calc { 
-            font-family: 'Press Start 2P'; 
-            font-size: 14px; 
-            color: #ffeb3b; 
-            margin-bottom: 20px; 
-            background: #333;
-            padding: 15px; 
-            border-radius: 5px;
-            letter-spacing: 2px; 
-        }
-        .info-desc { font-size: 14px; color: #ddd; line-height: 1.8; text-align: left;}
-        
-        /* Detail Stats Grid */
-        .detail-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 10px;
-            text-align: left;
-            margin-top: 10px;
-        }
-        .detail-row {
+
+        /* -- Lower Section: Tabs & Enemies -- */
+        .lobby-lower {
             display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid #444;
-            padding-bottom: 5px;
-            font-size: 14px;
-            color: #ddd;
-        }
-        .detail-val {
-            font-family: 'Press Start 2P';
-            color: #ffeb3b;
-            font-size: 12px;
+            flex: 1;
+            gap: 30px; 
+            height: 220px;
         }
 
-        /* Right Side: Villain List */
-        .section-right {
+        /* Bottom Left: Tabs Panel */
+        .panel-tabs-container {
+            flex: 1;
+            background: rgba(26, 26, 26, 0.9);
+            border-radius: 8px;
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tabs-header {
+            display: flex;
+            background: #111;
+            border-bottom: 1px solid #444;
+            flex-shrink: 0;
+            height: 36px; 
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none; 
+            border-bottom: 2px solid transparent; 
+            color: #888;
+            padding: 0;
+            cursor: pointer;
+            font-family: 'Noto Sans TC';
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: #2e3b28; 
+            color: #fff;
+            border-bottom: 2px solid #00e676;
+        }
+        .tab-btn:hover:not(.active) { background: #222; color: #ddd; }
+
+        .tab-content {
+            flex: 1;
+            padding: 10px; 
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); 
+            grid-auto-rows: min-content; 
+            gap: 6px; 
+            overflow-y: auto;
+        }
+        
+        /* Custom Scrollbar */
+        .tab-content::-webkit-scrollbar { width: 6px; }
+        .tab-content::-webkit-scrollbar-track { background: #222; }
+        .tab-content::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+        .tab-content::-webkit-scrollbar-thumb:hover { background: #777; }
+        
+        .item-slot {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #555;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            aspect-ratio: 1/1;
+            max-height: 100%; 
+            text-align: center;
+            line-height: 1.1;
+            padding: 2px;
+            box-sizing: border-box;
+        }
+        .item-slot:hover { border-color: #666; }
+        .item-slot.locked { background: #151515; opacity: 0.5; cursor: default; }
+        .item-slot.equipped { border-color: #00e676; box-shadow: 0 0 5px rgba(0, 230, 118, 0.3); }
+
+        /* Bottom Right: Villains */
+        .villain-list-container {
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 15px;
-        }
-
-        .section-right .section-title {
-            color: #ff5252;
-            text-shadow: 2px 2px 0 #000;
+            gap: 10px; 
+            overflow-y: auto;
         }
 
         .villain-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: rgba(26, 26, 26, 0.9);
-            border: none;
-            padding: 10px 15px;
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid #444;
+            padding: 10px 10px; 
             border-radius: 5px;
+            transition: transform 0.2s;
         }
+        .villain-row:hover { border-color: #666; }
 
         .villain-info {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 8px; 
             flex: 1;
         }
         
         .mini-portrait {
-            width: 50px;
-            height: 50px;
+            width: 40px; 
+            height: 40px;
             border-radius: 50%;
-            border: 2px solid #757575;
+            border: 2px solid #555;
             overflow: hidden;
             background: #222;
             flex-shrink: 0;
@@ -381,43 +414,28 @@
             display: flex;
             flex-direction: column;
             font-size: 10px;
-            color: #888;
-            margin-left: 10px;
-            gap: 2px;
+            color: #999;
+            gap: 0px;
+            line-height: 1.2;
+            padding-bottom: 3px;
         }
 
-        .villain-name {
-            font-size: 16px;
-            color: #ddd;
-            font-weight: bold;
-        }
-        .lvl-badge {
-            background: #d32f2f;
-            color: white;
-            padding: 2px 5px;
-            border-radius: 3px;
-            font-size: 10px;
-            margin-right: 5px;
-            font-family: 'Press Start 2P';
-        }
+        .villain-name { font-size: 13px; color: #ddd; font-weight: bold; }
 
         .attack-btn {
             background: #d32f2f;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 4px 10px; 
             font-family: 'Noto Sans TC';
             font-weight: bold;
             cursor: pointer;
             border-radius: 4px;
-            transition: transform 0.1s;
-            font-size: 14px;
+            font-size: 11px;
+            flex-shrink: 0;
         }
+        .attack-btn:hover { background: #ff5252; transform: scale(1.05); }
 
-        .attack-btn:hover {
-            background: #ff5252;
-            transform: scale(1.05);
-        }
 
         /* ================= BATTLE UI ================= */
         #battle-view {
@@ -428,200 +446,32 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
+            z-index: 100; 
         }
 
-        .hud-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 15px 20px;
-            width: 100%;
-            box-sizing: border-box;
-            pointer-events: none;
-        }
-
-        .char-panel {
-            display: flex;
-            align-items: center;
-            width: 45%;
-            position: relative;
-        }
+        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; padding: 15px 20px; width: 100%; box-sizing: border-box; pointer-events: none; }
+        .char-panel { display: flex; align-items: center; width: 45%; position: relative; }
         .char-panel.p2 { flex-direction: row-reverse; }
-
-        .portrait {
-            width: 80px;
-            height: 80px;
-            border-radius: 50%;
-            background: #444;
-            border: 4px solid #222;
-            z-index: 10;
-            overflow: hidden;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
-            flex-shrink: 0;
-        }
-        .portrait canvas { width: 100%; height: 100%; }
-
-        .hud-info {
-            display: flex;
-            flex-direction: column;
-            position: absolute;
-            top: 10px; 
-            left: 95px;
-            z-index: 12;
-            width: 200px;
-        }
+        .portrait { width: 80px; height: 80px; border-radius: 50%; background: #444; border: 4px solid #222; z-index: 10; overflow: hidden; box-shadow: 0 0 10px rgba(0,0,0,0.5); flex-shrink: 0; }
+        .hud-info { display: flex; flex-direction: column; position: absolute; top: 10px; left: 95px; z-index: 12; width: 200px; }
         .p2 .hud-info { left: auto; right: 95px; text-align: right; align-items: flex-end; }
-
-        .name-tag {
-            font-family: 'Noto Sans TC';
-            font-weight: bold;
-            font-size: 18px;
-            color: #fff;
-            text-shadow: 2px 2px 0 #000;
-        }
-        
-        .bar-frame {
-            flex-grow: 1;
-            height: 24px;
-            background: #222;
-            border: 3px solid #6d5e49;
-            border-radius: 12px;
-            position: relative;
-            margin: 0 -15px;
-            z-index: 5;
-            overflow: hidden;
-            top: 15px;
-            display: flex;
-            align-items: center; 
-            justify-content: center;
-        }
-
-        .life-fill {
-            height: 100%;
-            background: linear-gradient(to bottom, #ff9800, #e65100);
-            width: 100%;
-            transition: width 0.3s ease-out;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
+        .name-tag { font-family: 'Noto Sans TC'; font-weight: bold; font-size: 18px; color: #fff; text-shadow: 2px 2px 0 #000; }
+        .bar-frame { flex-grow: 1; height: 24px; background: #222; border: 3px solid #6d5e49; border-radius: 12px; position: relative; margin: 0 -15px; z-index: 5; overflow: hidden; top: 15px; display: flex; align-items: center; justify-content: center; }
+        .life-fill { height: 100%; background: linear-gradient(to bottom, #ff9800, #e65100); width: 100%; transition: width 0.3s ease-out; position: absolute; top: 0; left: 0; z-index: 1; }
         .p2 .life-fill { left: auto; right: 0; background: linear-gradient(to bottom, #ff5252, #b71c1c); }
-
-        .life-text {
-            position: relative;
-            z-index: 6;
-            font-size: 10px;
-            color: #fff;
-            text-shadow: 1px 1px 0 #000;
-            font-family: 'Press Start 2P';
-            line-height: 1; 
-        }
-
-        .battle-log {
-            position: absolute;
-            top: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 400px;
-            text-align: center;
-            font-family: 'Press Start 2P';
-            font-size: 12px;
-            color: #fff;
-            text-shadow: 1px 1px 0 #000;
-            z-index: 8;
-        }
-
-        .log-entry {
-            margin-bottom: 4px;
-            animation: floatUp 1s ease-out forwards;
-            opacity: 0;
-            background: rgba(0,0,0,0.4);
-            padding: 2px 8px;
-            border-radius: 4px;
-            display: inline-block;
-        }
-
-        @keyframes floatUp {
-            0% { opacity: 0; transform: translateY(10px); }
-            20% { opacity: 1; transform: translateY(0); }
-            80% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-10px); }
-        }
-
-        .turn-modal {
-            position: absolute;
-            top: 40%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #fff;
-            padding: 20px 40px;
-            border-radius: 10px;
-            text-align: center;
-            opacity: 0;
-            transition: opacity 0.2s;
-            pointer-events: none;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-        }
+        .life-text { position: relative; z-index: 6; font-size: 10px; color: #fff; text-shadow: 1px 1px 0 #000; font-family: 'Press Start 2P'; line-height: 1; }
+        .battle-log { position: absolute; top: 90px; left: 50%; transform: translateX(-50%); width: 400px; text-align: center; font-family: 'Press Start 2P'; font-size: 12px; color: #fff; text-shadow: 1px 1px 0 #000; z-index: 8; }
+        .log-entry { margin-bottom: 4px; animation: floatUp 1s ease-out forwards; opacity: 0; background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 4px; display: inline-block; }
+        .turn-modal { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.7); border: 2px solid #fff; padding: 20px 40px; border-radius: 10px; text-align: center; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20; display: flex; flex-direction: column; align-items: center; gap: 20px; }
         .turn-modal.show { opacity: 1; pointer-events: auto; }
         .turn-modal h2 { margin: 0; color: #ffeb3b; font-size: 32px; font-family: 'Noto Sans TC'; }
-
-        .modal-btn {
-            background: #d32f2f;
-            color: #fff;
-            border: 2px solid #ff5252;
-            padding: 10px 25px;
-            font-family: 'Noto Sans TC';
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.2s;
-        }
-        .modal-btn:hover {
-            background: #ff5252;
-            transform: scale(1.05);
-        }
-
-        #controls {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
-            z-index: 50;
-        }
-
-        button {
-            background: #4e342e;
-            color: #fff;
-            border: 2px solid #8d6e63;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-family: 'Noto Sans TC';
-            font-weight: bold;
-            border-radius: 5px;
-            font-size: 14px;
-        }
+        .modal-btn { background: #d32f2f; color: #fff; border: 2px solid #ff5252; padding: 10px 25px; font-family: 'Noto Sans TC'; font-size: 16px; font-weight: bold; cursor: pointer; border-radius: 5px; transition: all 0.2s; }
+        .modal-btn:hover { background: #ff5252; transform: scale(1.05); }
+        #controls { position: absolute; bottom: 10px; right: 10px; display: flex; gap: 10px; pointer-events: auto; z-index: 50; }
+        button { background: #4e342e; color: #fff; border: 2px solid #8d6e63; padding: 8px 16px; cursor: pointer; font-family: 'Noto Sans TC'; font-weight: bold; border-radius: 5px; font-size: 14px; }
         button:hover { background: #5d4037; border-color: #a1887f; }
-
-        .dmg-popup {
-            position: absolute;
-            color: #fff;
-            font-family: 'Press Start 2P';
-            font-size: 20px;
-            text-shadow: 2px 2px 0 #000;
-            pointer-events: none;
-            animation: popDamage 0.8s ease-out forwards;
-        }
-        
-        .dmg-crit { color: #ffeb3b; font-size: 28px; transform: scale(1.2); }
+        .dmg-popup { position: absolute; color: #fff; font-family: 'Press Start 2P'; font-size: 20px; text-shadow: 2px 2px 0 #000; pointer-events: none; animation: popDamage 0.8s ease-out forwards; }
+        .dmg-crit { color: #ffeb3b; font-size: 22px; font-weight: bold; } 
         .dmg-miss { color: #bdbdbd; font-size: 16px; }
         .dmg-block { color: #4fc3f7; font-size: 18px; }
         .dmg-combo { color: #ff5722; font-size: 16px; }
@@ -632,45 +482,121 @@
             100% { transform: translate(-50%, -60px) scale(1); opacity: 0; }
         }
 
-        .scanlines {
+        /* Battle Bottom Bar (8 Slots - Tight Fit) */
+        .battle-bottom-panel {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(to bottom, rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%);
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 90;
-            opacity: 0.2;
+            bottom: 60px; 
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0; 
+            padding: 0; 
+            background: rgba(20, 20, 20, 0.8);
+            border: 1px solid #444; 
+            border-radius: 4px;
+            pointer-events: auto;
+            z-index: 120;
         }
+        
+        .battle-slot {
+            width: 60px; 
+            height: 60px;
+            background: #222;
+            border: 1px solid #555; 
+            border-right: none; 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #555;
+            font-size: 12px;
+            font-family: 'Noto Sans TC';
+            font-weight: bold;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            cursor: pointer;
+            text-align: center;
+            line-height: 1.1;
+            padding: 2px;
+        }
+        .battle-slot:last-child { border-right: 1px solid #555; }
+        
+        /* Selection & Used States */
+        .battle-slot.selected {
+            border: 2px solid #ffd700; /* Yellow Glow */
+            color: #fff;
+            background: #333;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+        
+        .battle-slot.used {
+            background: #111;
+            color: #444;
+            cursor: not-allowed;
+            pointer-events: none;
+            border-color: #333;
+            opacity: 0.6;
+        }
+
+        /* Modals */
+        .info-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #222; border: 2px solid #ffeb3b; padding: 25px; border-radius: 10px; z-index: 200; width: 320px; box-shadow: 0 0 30px rgba(0,0,0,0.8); text-align: center; }
+        .info-modal.show { display: block; }
+        .info-close { position: absolute; top: 10px; right: 15px; cursor: pointer; color: #aaa; font-size: 24px; }
+        .info-title { color: #4fc3f7; font-size: 20px; margin-bottom: 20px; font-weight: bold;}
+        .info-calc { font-family: 'Noto Sans TC'; font-weight: bold; font-size: 18px; color: #ffeb3b; margin-bottom: 20px; background: #333; padding: 15px; border-radius: 5px; letter-spacing: 2px; }
+        .info-desc { font-size: 14px; color: #ddd; line-height: 1.8; text-align: left;}
+
+        .detail-grid { display: grid; grid-template-columns: 1fr; gap: 12px; text-align: left; margin-top: 15px; }
+        .detail-row { display: flex; justify-content: space-between; border-bottom: 1px solid #444; padding-bottom: 5px; font-size: 14px; color: #ddd; }
+        .detail-val { font-family: 'Noto Sans TC'; font-weight: bold; color: #ffeb3b; font-size: 14px; }
+
+        .confirm-modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; border: 2px solid #ff5252; padding: 30px; border-radius: 10px; z-index: 300; width: 350px; text-align: center; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
+        .confirm-modal.show { display: flex; flex-direction: column; gap: 20px; }
+        .confirm-text { font-size: 16px; color: #fff; line-height: 1.6; }
+        .confirm-actions { display: flex; gap: 20px; justify-content: center; }
+        .btn-yes { background: #d32f2f; border-color: #ff5252; color: white; padding: 8px 20px; border-radius: 4px; cursor: pointer; }
+        .btn-no { background: #333; border-color: #fff; color: white; padding: 8px 20px; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div id="game-container">
     <div class="scanlines"></div>
+    
     <canvas id="gameCanvas" width="800" height="600"></canvas>
     
     <!-- Lobby View -->
     <div id="lobby-view">
-        <div class="lobby-title">FIGHTER LEGENDS</div>
+        <div class="lobby-header-row">
+            <div class="lobby-title">FIGHTER LEGENDS</div>
+            <!-- Top Right Buttons -->
+            <div class="header-buttons">
+                <button id="test-mode-btn" class="tr-btn" onclick="game.toggleTestMode()">測試模式</button>
+                <button class="tr-btn btn-danger" onclick="game.resetGame()">重新開始</button>
+            </div>
+        </div>
+
         <div class="lobby-main">
             
-            <!-- Left: Player Select with Stats Editor -->
-            <div class="section-left">
-                <div class="section-title">配置你的英雄</div>
-                
-                <!-- Hero Carousel -->
-                <div class="hero-selector">
+            <!-- Upper Section: Hero & Stats -->
+            <div class="hero-section">
+                <!-- Left: Portrait & Selector & Info -->
+                <div class="hero-display-wrapper">
                     <button class="nav-btn" onclick="game.prevHero()">&lt;</button>
                     
-                    <div class="selected-hero-display">
+                    <div class="hero-center">
                         <div class="lobby-hero-portrait" id="lobby-hero-portrait"></div>
                         <h3 class="lobby-hero-name" id="lobby-hero-name">Wolf Boy</h3>
                         <div class="lobby-hero-meta">
                             <div class="meta-row">
-                                <span>LV.<span class="meta-val" id="lobby-hero-lvl">5</span></span>
+                                <span>LV.
+                                    <span class="meta-val" id="lobby-hero-lvl">5</span>
+                                    <span id="level-controls" class="lvl-controls">
+                                        <button class="lvl-btn" onclick="game.adjustLevel(-1)">-</button>
+                                        <button class="lvl-btn" onclick="game.adjustLevel(1)">+</button>
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="meta-row">
                                 <span>HP <span class="hp-val" id="lobby-hero-hp">350</span></span>
                             </div>
                             <div class="meta-row">
@@ -682,56 +608,69 @@
                     <button class="nav-btn" onclick="game.nextHero()">&gt;</button>
                 </div>
 
-                <!-- Stats Editor -->
-                <div class="stats-editor">
-                    <div class="stat-points-display" id="stat-points">剩餘點數: 0</div>
-                    <!-- STR -->
-                    <div class="stat-row">
-                        <div class="stat-label-wrapper">
-                            <span>強壯 STR</span>
-                            <button class="help-btn" onclick="game.showStatInfo('str')">?</button>
+                <!-- Right: Stats Editor -->
+                <div class="hero-stats-wrapper">
+                    <div class="stats-editor">
+                        <div class="stat-points-display" id="stat-points">剩餘點數: 0</div>
+                        
+                        <div class="stat-row">
+                            <div class="stat-label-wrapper">
+                                <span>強壯 STR</span>
+                                <button class="help-btn" onclick="game.showStatInfo('str')">?</button>
+                            </div>
+                            <div class="stat-controls">
+                                <button class="stat-btn" id="btn-dec-str" onclick="game.adjustStat('str', -1)">-</button>
+                                <span class="stat-value-display" id="val-str">18</span>
+                                <button class="stat-btn" id="btn-inc-str" onclick="game.adjustStat('str', 1)">+</button>
+                            </div>
                         </div>
-                        <div class="stat-controls">
-                            <button class="stat-btn" id="btn-dec-str" onclick="game.adjustStat('str', -1)">-</button>
-                            <span class="stat-value-display" id="val-str">18</span>
-                            <button class="stat-btn" id="btn-inc-str" onclick="game.adjustStat('str', 1)">+</button>
+                        <div class="stat-row">
+                            <div class="stat-label-wrapper">
+                                <span>敏捷 AGI</span>
+                                <button class="help-btn" onclick="game.showStatInfo('agi')">?</button>
+                            </div>
+                            <div class="stat-controls">
+                                <button class="stat-btn" id="btn-dec-agi" onclick="game.adjustStat('agi', -1)">-</button>
+                                <span class="stat-value-display" id="val-agi">25</span>
+                                <button class="stat-btn" id="btn-inc-agi" onclick="game.adjustStat('agi', 1)">+</button>
+                            </div>
                         </div>
+                        <div class="stat-row">
+                            <div class="stat-label-wrapper">
+                                <span>技巧 TEC</span>
+                                <button class="help-btn" onclick="game.showStatInfo('tec')">?</button>
+                            </div>
+                            <div class="stat-controls">
+                                <button class="stat-btn" id="btn-dec-tec" onclick="game.adjustStat('tec', -1)">-</button>
+                                <span class="stat-value-display" id="val-tec">15</span>
+                                <button class="stat-btn" id="btn-inc-tec" onclick="game.adjustStat('tec', 1)">+</button>
+                            </div>
+                        </div>
+                        
+                        <button class="detail-stats-btn" onclick="game.showDetailStats()">查看詳細數值</button>
                     </div>
-                    <!-- AGI -->
-                    <div class="stat-row">
-                        <div class="stat-label-wrapper">
-                            <span>敏捷 AGI</span>
-                            <button class="help-btn" onclick="game.showStatInfo('agi')">?</button>
-                        </div>
-                        <div class="stat-controls">
-                            <button class="stat-btn" id="btn-dec-agi" onclick="game.adjustStat('agi', -1)">-</button>
-                            <span class="stat-value-display" id="val-agi">25</span>
-                            <button class="stat-btn" id="btn-inc-agi" onclick="game.adjustStat('agi', 1)">+</button>
-                        </div>
-                    </div>
-                    <!-- TEC -->
-                    <div class="stat-row">
-                        <div class="stat-label-wrapper">
-                            <span>技巧 TEC</span>
-                            <button class="help-btn" onclick="game.showStatInfo('tec')">?</button>
-                        </div>
-                        <div class="stat-controls">
-                            <button class="stat-btn" id="btn-dec-tec" onclick="game.adjustStat('tec', -1)">-</button>
-                            <span class="stat-value-display" id="val-tec">15</span>
-                            <button class="stat-btn" id="btn-inc-tec" onclick="game.adjustStat('tec', 1)">+</button>
-                        </div>
-                    </div>
-                    <button class="detail-stats-btn" onclick="game.showDetailStats()">查看詳細數值</button>
                 </div>
             </div>
 
-            <!-- Right: Villain List -->
-            <div class="section-right">
-                <div class="section-title">懸賞名單 (黑衣軍團)</div>
-                
-                <!-- Dynamically Generated List -->
-                <div id="villain-list">
-                    <!-- JS will populate this -->
+            <!-- Lower Section: Tabs & Villains -->
+            <div class="lobby-lower">
+                <!-- Left: Tabs (Skills/Items) -->
+                <div class="panel-tabs-container">
+                    <div class="tabs-header">
+                        <button class="tab-btn active" id="tab-btn-skills" onclick="game.switchTab('skills')">技能</button>
+                        <button class="tab-btn" id="tab-btn-items" onclick="game.switchTab('items')">物品</button>
+                    </div>
+                    <div id="tab-content-skills" class="tab-content">
+                        <!-- JS Populated -->
+                    </div>
+                    <div id="tab-content-items" class="tab-content" style="display: none;">
+                        <!-- JS Populated -->
+                    </div>
+                </div>
+
+                <!-- Right: Villains -->
+                <div class="villain-list-container" id="villain-list">
+                    <!-- JS populated -->
                 </div>
             </div>
         </div>
@@ -742,6 +681,14 @@
             <h3 id="info-title" class="info-title">STAT NAME</h3>
             <div id="info-calc" class="info-calc">0 = 0 + 0</div>
             <p id="info-desc" class="info-desc">Description here</p>
+        </div>
+        
+        <!-- Skill/Item Modal -->
+        <div id="item-info-modal" class="info-modal">
+            <span class="info-close" onclick="game.closeItemInfo()">×</span>
+            <h3 id="item-title" class="info-title">SKILL NAME</h3>
+            <p id="item-desc" class="info-desc">Description here</p>
+            <button id="item-equip-btn" class="modal-btn" onclick="game.equipCurrentItem()">攜帶</button>
         </div>
 
         <!-- Detail Stats Modal -->
@@ -754,6 +701,15 @@
                 <div class="detail-row"><span>閃避機率</span><span class="detail-val" id="d-dodge">0%</span></div>
                 <div class="detail-row"><span>格擋機率</span><span class="detail-val" id="d-block">0%</span></div>
                 <div class="detail-row"><span>連擊傾向</span><span class="detail-val" id="d-combo">0%</span></div>
+            </div>
+        </div>
+
+        <!-- Reset Confirm Modal -->
+        <div id="reset-confirm-modal" class="confirm-modal">
+            <div class="confirm-text">確定要重置遊戲紀錄嗎？<br>這將會清除所有等級與點數。</div>
+            <div class="confirm-actions">
+                <button class="btn-yes" onclick="game.confirmReset()">確定</button>
+                <button class="btn-no" onclick="game.closeResetModal()">取消</button>
             </div>
         </div>
     </div>
@@ -793,6 +749,11 @@
             <button id="modal-ok-btn" class="modal-btn" style="display:none;" onclick="game.returnToLobby()">確定</button>
         </div>
 
+        <!-- Battle Bottom Bar (8 Slots - Tight Fit) -->
+        <div id="battle-slots" class="battle-bottom-panel">
+            <!-- JS Populated -->
+        </div>
+
         <div id="controls">
             <button onclick="game.returnToLobby()">返回大廳</button>
             <button onclick="game.resetMatch()">重新戰鬥</button>
@@ -805,10 +766,45 @@
 
 <script>
 const GRAVITY = 0.8;
-const GROUND_Y = 500; 
+const GROUND_Y = 450; 
 
 const STATE = { IDLE: 0, RUN: 1, ATTACK: 2, BLOCK: 3, HIT: 4, DODGE: 5, DEAD: 6, SPECIAL: 7, RETREAT: 8, WIN: 9 };
 const PHASE = { DECIDE: 0, APPROACH: 1, ACT: 2, IMPACT: 3, RETREAT: 4, WAIT: 5 };
+
+// --- ASSET DATABASE (Merged Skills & Items) ---
+const ASSETS_DB = {
+    // SKILLS
+    'crazy_slash': {
+        id: 'crazy_slash',
+        name: '瘋狂斬擊',
+        desc: '下一回合必定連擊。',
+        icon: '連', 
+        displayName: '瘋狂斬擊', 
+        type: 'skill',
+        effect: (user) => { user.buffs.forceCombo = true; }
+    },
+    'critical_strike': {
+        id: 'critical_strike',
+        name: '會心一擊',
+        desc: '下一回合必定暴擊。',
+        icon: '暴', 
+        displayName: '會心一擊', 
+        type: 'skill',
+        effect: (user) => { user.buffs.forceCrit = true; }
+    },
+    // ITEMS
+    'wooden_sword': {
+        id: 'wooden_sword',
+        name: '木劍',
+        desc: '戰鬥中使用，本場戰鬥基礎攻擊力增加 10%。',
+        icon: '劍',
+        displayName: '木劍',
+        type: 'item',
+        effect: (user) => { 
+            user.buffs.atkMultiplier = (user.buffs.atkMultiplier || 1) + 0.1; 
+        }
+    }
+};
 
 function drawEllipse(ctx, x, y, w, h, color) {
     ctx.fillStyle = color;
@@ -818,6 +814,9 @@ function drawEllipse(ctx, x, y, w, h, color) {
 }
 
 function spawnDamageText(x, y, text, type) {
+    const offsetX = (Math.random() - 0.5) * 40; 
+    const offsetY = (Math.random() - 0.5) * 30; 
+
     const el = document.createElement('div');
     el.className = 'dmg-popup';
     if (type === 'crit') el.classList.add('dmg-crit');
@@ -825,8 +824,8 @@ function spawnDamageText(x, y, text, type) {
     if (type === 'block') el.classList.add('dmg-block');
     if (type === 'combo') el.classList.add('dmg-combo');
     el.innerText = text;
-    el.style.left = x + 'px';
-    el.style.top = (y - 50) + 'px';
+    el.style.left = (x + offsetX) + 'px';
+    el.style.top = (y - 70 + offsetY) + 'px'; 
     document.getElementById('damage-container').appendChild(el);
     setTimeout(() => el.remove(), 800);
 }
@@ -899,7 +898,6 @@ class ChibiFighter {
         this.name = name;
         this.type = type || 'wolf'; 
         
-        // RPG Stats Initialization
         this.level = 1;
         this.stats = { str: 10, agi: 10, tec: 10 };
         this.exp = 0;
@@ -916,7 +914,6 @@ class ChibiFighter {
             this.stats = { ...customStats.stats }; 
         }
 
-        // HP Formula: Base + (Str * 5) + (Lvl * 20)
         this.maxHp = 100 + (this.stats.str * 5) + (this.level * 20);
         this.hp = this.maxHp;
         
@@ -929,10 +926,16 @@ class ChibiFighter {
         this.animFrame = 0;
         this.alpha = 1.0;
         this.isCrit = false;
+        
+        // Buffs system
+        this.buffs = {
+            forceCombo: false,
+            forceCrit: false,
+            atkMultiplier: 1.0 // New base stat
+        };
     }
 
     initStatsByType() {
-        // Player defaults
         if (this.type === 'wolf') {
             this.level = 5;
             this.exp = 250;
@@ -946,7 +949,6 @@ class ChibiFighter {
             this.stats = { str: 28, agi: 12, tec: 10 }; 
             this.points = 5; 
         } 
-        // Villains default templates
         else if (this.type === 'villain_1') {
             this.level = 3;
             this.stats = { str: 12, agi: 15, tec: 12 };
@@ -969,6 +971,7 @@ class ChibiFighter {
         this.isCrit = false;
         this.vx = 0;
         this.vy = 0;
+        this.buffs = { forceCombo: false, forceCrit: false, atkMultiplier: 1.0 }; // Reset buffs
     }
 
     update() {
@@ -1001,7 +1004,7 @@ class ChibiFighter {
         if (this.state !== STATE.DODGE && this.state !== STATE.DEAD) {
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(this.x, GROUND_Y + 5, 25, 8, 0, 0, Math.PI*2);
+            ctx.ellipse(this.x, GROUND_Y + 5, 25, 8, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -1017,29 +1020,12 @@ class ChibiFighter {
         if (this.state === STATE.RUN) bobY = Math.sin(this.animFrame * 0.5) * 5;
         if (this.state === STATE.WIN) bobY = Math.sin(this.animFrame * 0.2) * 5;
 
-        // --- COLORS BASED ON TYPE ---
-        let colors = {
-            pants: '#37474f',
-            body: '#546e7a',
-            skin: '#ffccbc',
-            hair: '#78909c',
-            detail: '#cfd8dc',
-            acc: '#fff',
-            eye: '#000'
-        };
+        let colors = { pants: '#37474f', body: '#546e7a', skin: '#ffccbc', hair: '#78909c', detail: '#cfd8dc', acc: '#fff', eye: '#000' };
 
         if (this.type === 'girl') {
             colors = { pants: '#1565c0', body: '#ff7043', skin: '#ffccbc', hair: '#d84315', detail: '#fff', acc: '#d84315', eye: '#3e2723' };
         } else if (this.type.startsWith('villain')) {
-            colors = { 
-                pants: '#212121', 
-                body: '#000000', 
-                skin: '#e0e0e0', 
-                hair: '#424242', 
-                detail: '#757575', 
-                acc: '#212121',
-                eye: '#d50000' 
-            };
+            colors = { pants: '#212121', body: '#000000', skin: '#e0e0e0', hair: '#424242', detail: '#757575', acc: '#212121', eye: '#d50000' };
             if (this.type === 'villain_2') colors.hair = '#3e2723'; 
             if (this.type === 'villain_3') colors.body = '#1a237e'; 
         }
@@ -1047,28 +1033,22 @@ class ChibiFighter {
         const isGirlModel = (this.type === 'girl' || this.type === 'villain_2');
 
         if (!isGirlModel) {
-            // == WOLF MODEL ==
+            // WOLF
             ctx.fillStyle = colors.pants;
             if (this.state === STATE.RUN || this.state === STATE.WIN) {
                 let lOffset = (this.state===STATE.WIN) ? 0 : Math.sin(this.animFrame * 0.5) * 10;
-                ctx.fillRect(-15 + lOffset, -20, 12, 20); 
-                ctx.fillRect(5 - lOffset, -20, 12, 20);
+                ctx.fillRect(-15 + lOffset, -20, 12, 20); ctx.fillRect(5 - lOffset, -20, 12, 20);
             } else {
-                ctx.fillRect(-15, -20, 12, 20);
-                ctx.fillRect(5, -20, 12, 20);
+                ctx.fillRect(-15, -20, 12, 20); ctx.fillRect(5, -20, 12, 20);
             }
 
             ctx.translate(0, bobY);
-            ctx.fillStyle = colors.body;
-            ctx.fillRect(-18, -50, 36, 35);
-            ctx.fillStyle = colors.detail;
-            ctx.beginPath(); ctx.moveTo(-10, -50); ctx.lineTo(0, -35); ctx.lineTo(10, -50); ctx.fill();
+            ctx.fillStyle = colors.body; ctx.fillRect(-18, -50, 36, 35);
+            ctx.fillStyle = colors.detail; ctx.beginPath(); ctx.moveTo(-10, -50); ctx.lineTo(0, -35); ctx.lineTo(10, -50); ctx.fill();
 
-            ctx.fillStyle = colors.skin;
-            ctx.beginPath(); ctx.arc(0, -65, 22, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(0, -65, 22, 0, Math.PI * 2); ctx.fill();
 
-            ctx.fillStyle = colors.eye;
-            ctx.beginPath();
+            ctx.fillStyle = colors.eye; ctx.beginPath();
             if (this.state === STATE.HIT || this.state === STATE.DEAD) {
                 ctx.moveTo(5, -68); ctx.lineTo(12, -63); ctx.moveTo(12, -68); ctx.lineTo(5, -63);
             } else if (this.state === STATE.BLOCK) {
@@ -1081,15 +1061,13 @@ class ChibiFighter {
             }
             ctx.stroke();
 
-            ctx.fillStyle = colors.hair;
-            ctx.beginPath(); ctx.arc(0, -68, 24, Math.PI, Math.PI * 2.2); ctx.lineTo(20, -50); ctx.lineTo(-20, -50); ctx.fill();
+            ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, -68, 24, Math.PI, Math.PI * 2.2); ctx.lineTo(20, -50); ctx.lineTo(-20, -50); ctx.fill();
             ctx.beginPath(); ctx.moveTo(-15, -85); ctx.lineTo(-22, -95); ctx.lineTo(-8, -90); ctx.fill(); 
             ctx.beginPath(); ctx.moveTo(5, -90); ctx.lineTo(15, -95); ctx.lineTo(12, -85); ctx.fill(); 
 
             ctx.fillStyle = colors.body;
             if (this.state === STATE.ATTACK) {
                 ctx.save();
-                // FIX: Use instance isCrit
                 if (this.isCrit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ffd700'; }
                 let swing = Math.sin(this.animFrame * 0.2); 
                 ctx.translate(5, -55); ctx.rotate(swing - 0.5); 
@@ -1104,6 +1082,22 @@ class ChibiFighter {
             } else if (this.state === STATE.WIN) {
                 ctx.save(); ctx.translate(-10, -55); ctx.rotate(-2.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
                 ctx.save(); ctx.translate(10, -55); ctx.rotate(-0.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
+            } else if (this.state === STATE.SPECIAL) {
+                // Special Skill Pose (Power up)
+                const shake = Math.sin(this.animFrame * 0.8) * 2;
+                ctx.translate(shake, 0);
+                // Glow
+                ctx.shadowBlur = 30; 
+                ctx.shadowColor = '#ffcc00'; 
+                
+                ctx.fillStyle = colors.body;
+                // Left arm up
+                ctx.save(); ctx.translate(-12, -55); ctx.rotate(-2.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
+                // Right arm up
+                ctx.save(); ctx.translate(12, -55); ctx.rotate(-0.6); ctx.fillRect(0, 0, 25, 10); ctx.restore();
+                
+                // Head up
+                ctx.beginPath(); ctx.arc(0, -68, 22, 0, Math.PI * 2); ctx.fill();
             } else if (this.state === STATE.DEAD) {
                 ctx.fillRect(-10, -50, 10, 25);
             } else {
@@ -1111,7 +1105,7 @@ class ChibiFighter {
             }
 
         } else {
-            // == GIRL MODEL ==
+            // == GIRL ==
             ctx.fillStyle = colors.pants;
             if (this.state === STATE.RUN || this.state === STATE.WIN) {
                 let lOffset = (this.state===STATE.WIN) ? 0 : Math.sin(this.animFrame * 0.5) * 10;
@@ -1125,8 +1119,7 @@ class ChibiFighter {
 
             ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(0, -65, 20, 0, Math.PI * 2); ctx.fill();
 
-            ctx.fillStyle = colors.hair;
-            ctx.beginPath(); ctx.arc(0, -68, 22, Math.PI * 0.8, Math.PI * 2.2); ctx.fill();
+            ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, -68, 22, Math.PI * 0.8, Math.PI * 2.2); ctx.fill();
             drawEllipse(ctx, -18, -75, 10, 10, colors.hair);
             drawEllipse(ctx, 10, -78, 8, 8, colors.hair);
             ctx.fillStyle = colors.detail; ctx.fillRect(12, -75, 4, 10);
@@ -1147,7 +1140,6 @@ class ChibiFighter {
             ctx.fillStyle = colors.skin; 
             if (this.state === STATE.ATTACK) {
                 ctx.save();
-                // FIX: Use instance isCrit
                 if (this.isCrit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ff5252'; }
                 let swing = Math.sin(this.animFrame * 0.2);
                 ctx.translate(10, -55); ctx.rotate(swing - 0.5); 
@@ -1163,6 +1155,14 @@ class ChibiFighter {
                 ctx.save(); ctx.translate(15, -65); ctx.rotate(-2.0); ctx.fillStyle = colors.skin; ctx.fillRect(0, 0, 20, 8);
                 ctx.translate(20, 0); ctx.rotate(1.5); ctx.fillStyle = '#8d6e63'; ctx.fillRect(-2, -20, 4, 50); 
                 ctx.fillStyle = '#757575'; ctx.fillRect(-12, -30, 24, 18); ctx.restore();
+            } else if (this.state === STATE.SPECIAL) {
+                // Special Skill Pose for Girl
+                const shake = Math.sin(this.animFrame * 0.8) * 2;
+                ctx.translate(shake, 0);
+                ctx.shadowBlur = 30; ctx.shadowColor = '#ff5252';
+                ctx.fillStyle = colors.skin; 
+                ctx.save(); ctx.translate(15, -65); ctx.rotate(-2.5); ctx.fillRect(0, 0, 20, 8); ctx.restore(); // Left Arm up
+                ctx.save(); ctx.translate(-15, -65); ctx.rotate(0.5); ctx.fillRect(0, 0, 20, 8); ctx.restore(); // Right arm out
             } else if (this.state === STATE.DEAD) {
                 ctx.fillRect(10, -50, 8, 20);
             } else {
@@ -1180,49 +1180,38 @@ class Game {
         this.ctx = this.canvas.getContext('2d');
         this.container = document.getElementById('game-container');
         
-        // Views
         this.lobbyView = document.getElementById('lobby-view');
         this.battleView = document.getElementById('battle-view');
         this.mode = 'LOBBY'; 
 
-        // DATA: Persistent Hero Stats for Lobby Editing
-        // Added points: 5 default
-        this.heroData = [
-            { 
-                type: 'wolf', name: 'Wolf Boy', level: 5, exp: 250, maxExp: 500, 
-                stats: { str: 18, agi: 25, tec: 15 },
-                baseStats: { str: 18, agi: 25, tec: 15 },
-                points: 5
-            },
-            { 
-                type: 'girl', name: 'Red Girl', level: 5, exp: 100, maxExp: 500, 
-                stats: { str: 28, agi: 12, tec: 10 },
-                baseStats: { str: 28, agi: 12, tec: 10 },
-                points: 5
-            }
+        const DEFAULT_HERO_DATA = [
+            { type: 'wolf', name: 'Wolf Boy', level: 5, exp: 250, maxExp: 500, stats: { str: 18, agi: 25, tec: 15 }, baseStats: { str: 18, agi: 25, tec: 15 }, points: 5, ownedSkills: ['crazy_slash', 'critical_strike'], equippedSkills: [], ownedItems: ['wooden_sword'] },
+            { type: 'girl', name: 'Red Girl', level: 5, exp: 100, maxExp: 500, stats: { str: 28, agi: 12, tec: 10 }, baseStats: { str: 28, agi: 12, tec: 10 }, points: 5, ownedSkills: [], equippedSkills: [], ownedItems: [] }
         ];
         
-        this.currentHeroIndex = 0; // 0 = Wolf, 1 = Girl
+        this.heroData = JSON.parse(JSON.stringify(DEFAULT_HERO_DATA)); 
+        this.loadGame(); 
+        
+        this.testMode = false; 
+        this.currentHeroIndex = 0; 
         this.selectedEnemyType = null;
         this.selectedEnemyName = '';
+        this.selectedItemForModal = null; 
         
-        // Villain Data Storage
+        this.pendingSkill = null; 
+
         this.villainData = [];
-        // Generate villains for the first time
         this.generateVillains(this.heroData[this.currentHeroIndex].level);
 
-        // Init Portraits
         this.renderPortrait(new ChibiFighter(0,0,true,'','wolf'), 'lobby-hero-portrait'); 
         this.renderPortrait(new ChibiFighter(0,0,true,'','villain_1'), 'v-1');
         this.renderPortrait(new ChibiFighter(0,0,false,'','villain_2'), 'v-2');
         this.renderPortrait(new ChibiFighter(0,0,false,'','villain_3'), 'v-3');
 
-        this.updateLobbyDisplay(); // Will also generate villains based on level
+        this.updateLobbyDisplay(); 
 
         this.particles = [];
-        for(let i=0; i<15; i++) {
-            this.particles.push(new Particle(Math.random()*800, Math.random()*600, 'leaf'));
-        }
+        for(let i=0; i<15; i++) this.particles.push(new Particle(Math.random()*800, Math.random()*600, 'leaf'));
 
         this.activePlayer = null;
         this.targetPlayer = null;
@@ -1235,46 +1224,154 @@ class Game {
         requestAnimationFrame(this.loop);
     }
 
+    saveGame() { try { localStorage.setItem('fighter_legend_data', JSON.stringify(this.heroData)); } catch (e) {} }
+    
+    loadGame() { 
+        try { 
+            const data = localStorage.getItem('fighter_legend_data'); 
+            if (data) {
+                const parsed = JSON.parse(data);
+                // MIGRATION LOGIC:
+                parsed.forEach(hero => {
+                    if (!hero.ownedSkills) hero.ownedSkills = (hero.type === 'wolf') ? ['crazy_slash', 'critical_strike'] : [];
+                    if (!hero.equippedSkills) hero.equippedSkills = [];
+                    if (!hero.ownedItems) hero.ownedItems = (hero.type === 'wolf') ? ['wooden_sword'] : []; // Migration for Items
+                });
+                this.heroData = parsed;
+            }
+        } catch (e) {
+            console.error("Load failed", e);
+        } 
+    }
+
+    resetGame() { document.getElementById('reset-confirm-modal').classList.add('show'); }
+    closeResetModal() { document.getElementById('reset-confirm-modal').classList.remove('show'); }
+    confirmReset() {
+        localStorage.removeItem('fighter_legend_data');
+        // Manual Reset
+        this.heroData = [
+            { type: 'wolf', name: 'Wolf Boy', level: 5, exp: 250, maxExp: 500, stats: { str: 18, agi: 25, tec: 15 }, baseStats: { str: 18, agi: 25, tec: 15 }, points: 5, ownedSkills: ['crazy_slash', 'critical_strike'], equippedSkills: [], ownedItems: ['wooden_sword'] },
+            { type: 'girl', name: 'Red Girl', level: 5, exp: 100, maxExp: 500, stats: { str: 28, agi: 12, tec: 10 }, baseStats: { str: 28, agi: 12, tec: 10 }, points: 5, ownedSkills: [], equippedSkills: [], ownedItems: [] }
+        ];
+        this.closeResetModal();
+        this.returnToLobby(); 
+    }
+
+    toggleTestMode() {
+        this.testMode = !this.testMode;
+        const btn = document.getElementById('test-mode-btn');
+        if (this.testMode) {
+            btn.classList.add('active');
+            document.getElementById('level-controls').style.display = 'inline-block';
+        } else {
+            btn.classList.remove('active');
+            document.getElementById('level-controls').style.display = 'none';
+        }
+        this.updateLobbyDisplay();
+    }
+
+    switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.style.display = 'none');
+        document.getElementById(`tab-btn-${tabName}`).classList.add('active');
+        document.getElementById(`tab-content-${tabName}`).style.display = 'grid';
+    }
+    
+    openItemInfo(id, type) {
+        this.selectedItemForModal = { id, type };
+        const dbItem = ASSETS_DB[id];
+        if(!dbItem) return;
+        
+        document.getElementById('item-title').innerText = dbItem.name;
+        document.getElementById('item-desc').innerText = dbItem.desc;
+        
+        const hero = this.heroData[this.currentHeroIndex];
+        const isEquipped = hero.equippedSkills.includes(id);
+        const btn = document.getElementById('item-equip-btn');
+        
+        if(isEquipped) {
+            btn.innerText = "卸下";
+            btn.style.background = '#555';
+        } else {
+            btn.innerText = "攜帶";
+            btn.style.background = '#d32f2f';
+        }
+        
+        document.getElementById('item-info-modal').classList.add('show');
+    }
+    
+    closeItemInfo() {
+        document.getElementById('item-info-modal').classList.remove('show');
+        this.selectedItemForModal = null;
+    }
+    
+    equipCurrentItem() {
+        if(!this.selectedItemForModal) return;
+        const { id, type } = this.selectedItemForModal;
+        const hero = this.heroData[this.currentHeroIndex];
+        
+        // Universal equip for skills and items
+        const index = hero.equippedSkills.indexOf(id);
+        if(index > -1) {
+            hero.equippedSkills.splice(index, 1); 
+        } else {
+            if(hero.equippedSkills.length < 8) { 
+                hero.equippedSkills.push(id); 
+            } else {
+                alert("攜帶欄位已滿！");
+                return;
+            }
+        }
+        
+        this.saveGame();
+        this.updateLobbyDisplay();
+        this.closeItemInfo();
+    }
+
+    adjustLevel(delta) {
+        const hero = this.heroData[this.currentHeroIndex];
+        if (delta > 0) {
+            hero.level++;
+            hero.points += 5;
+            ['str', 'agi', 'tec'].forEach(s => { hero.baseStats[s]++; hero.stats[s]++; });
+        } else {
+            if (hero.level > 1) {
+                hero.level--;
+                hero.points -= 5;
+                ['str', 'agi', 'tec'].forEach(s => { hero.baseStats[s]--; hero.stats[s]--; });
+                while (hero.points < 0) {
+                    let reduced = false;
+                    for (let s of ['str', 'agi', 'tec']) {
+                        if (hero.stats[s] > hero.baseStats[s]) {
+                            hero.stats[s]--;
+                            hero.points++;
+                            reduced = true;
+                            if (hero.points >= 0) break;
+                        }
+                    }
+                    if (!reduced) { hero.points = 0; break; }
+                }
+            }
+        }
+        hero.maxExp = Math.floor(100 * Math.pow(1.2, hero.level - 1));
+        this.saveGame();
+        this.updateLobbyDisplay();
+    }
+
     generateVillains(heroLevel) {
         this.villainData = [];
         const types = ['villain_1', 'villain_2', 'villain_3'];
         const names = ['黑衣影衛', '黑衣狂徒', '暗黑忍者'];
-        
         for(let i=0; i<3; i++) {
             const type = types[i];
             const name = names[i];
-            // Dynamic Level: Hero Level +/- 5, min 1
-            const levelOffset = Math.floor(Math.random() * 11) - 5; // -5 to 5
+            const levelOffset = Math.floor(Math.random() * 11) - 5; 
             let level = Math.max(1, heroLevel + levelOffset);
-            
-            // Base Stats + Level Scaling
             let str = 10, agi = 10, tec = 10;
-            
-            if (type === 'villain_1') { // Balanced
-                str = 10 + (level * 1.5);
-                agi = 10 + (level * 1.5);
-                tec = 10 + (level * 1.5);
-            } else if (type === 'villain_2') { // Strong
-                str = 15 + (level * 2);
-                agi = 8 + (level * 1);
-                tec = 10 + (level * 1.2);
-            } else if (type === 'villain_3') { // Fast/Tech
-                str = 10 + (level * 1.5);
-                agi = 15 + (level * 2);
-                tec = 15 + (level * 2);
-            }
-            
-            this.villainData.push({
-                id: i,
-                type: type,
-                name: name,
-                level: level,
-                stats: {
-                    str: Math.floor(str),
-                    agi: Math.floor(agi),
-                    tec: Math.floor(tec)
-                }
-            });
+            if (type === 'villain_1') { str = 10+level*1.5; agi = 10+level*1.5; tec = 10+level*1.5; } 
+            else if (type === 'villain_2') { str = 15+level*2; agi = 8+level*1; tec = 10+level*1.2; } 
+            else if (type === 'villain_3') { str = 10+level*1.5; agi = 15+level*2; tec = 15+level*2; }
+            this.villainData.push({ id: i, type: type, name: name, level: level, stats: { str: Math.floor(str), agi: Math.floor(agi), tec: Math.floor(tec) } });
         }
     }
 
@@ -1285,14 +1382,12 @@ class Game {
 
     nextHero() {
         this.currentHeroIndex = (this.currentHeroIndex + 1) % this.heroData.length;
-        // Only regenerate villains when switching heroes
         this.generateVillains(this.heroData[this.currentHeroIndex].level);
         this.updateLobbyDisplay();
     }
 
     prevHero() {
         this.currentHeroIndex = (this.currentHeroIndex - 1 + this.heroData.length) % this.heroData.length;
-        // Only regenerate villains when switching heroes
         this.generateVillains(this.heroData[this.currentHeroIndex].level);
         this.updateLobbyDisplay();
     }
@@ -1310,6 +1405,7 @@ class Game {
                 hero.points++;
             }
         }
+        this.saveGame(); 
         this.updateLobbyDisplay();
     }
 
@@ -1326,7 +1422,7 @@ class Game {
         const desc = document.getElementById('info-desc');
         let name = "";
         let descText = "";
-        if (stat === 'str') { name = "強壯 STR"; descText = "增加物理傷害與生命值。"; } // Update text
+        if (stat === 'str') { name = "強壯 STR"; descText = "增加物理傷害與生命值。"; } 
         else if (stat === 'agi') { name = "敏捷 AGI"; descText = "增加暴擊機率 (CRIT) 與閃避機率 (MISS)，並增加些許攻擊力。"; }
         else if (stat === 'tec') { name = "技巧 TEC"; descText = "增加連擊機率 (COMBO) 與格擋機率 (BLOCK)，並增加些許攻擊力。"; }
         title.innerText = name;
@@ -1335,45 +1431,34 @@ class Game {
         modal.classList.add('show');
     }
     
-    closeStatInfo() {
-        document.getElementById('stat-info-modal').classList.remove('show');
-    }
+    closeStatInfo() { document.getElementById('stat-info-modal').classList.remove('show'); }
     
     showDetailStats() {
         const hero = this.heroData[this.currentHeroIndex];
         const s = hero.stats;
-        
-        // New Dmg Formula
+        const wAtk = 100; const wCombo = s.tec * 2; const wCrit = s.agi * 2; const total = wAtk + wCombo + wCrit;
         const dmg = Math.floor((s.str * 0.5) + (s.agi * 0.25) + (s.tec * 0.25));
-        const crit = (s.agi * 1).toFixed(1);
-        const dodge = (s.agi * 0.4).toFixed(1); 
-        const block = (s.tec * 0.5).toFixed(1); 
-        const combo = (s.tec * 1.0).toFixed(1); 
-        
+        const crit = ((wCrit / total) * 100).toFixed(1);
+        const combo = ((wCombo / total) * 100).toFixed(1);
+        const dodge = (s.agi / (s.agi + 200) * 100).toFixed(1); 
+        const block = (s.tec / (s.tec + 200) * 100).toFixed(1); 
         document.getElementById('d-atk').innerText = dmg;
         document.getElementById('d-crit').innerText = crit + '%';
         document.getElementById('d-dodge').innerText = dodge + '%';
         document.getElementById('d-block').innerText = block + '%';
         document.getElementById('d-combo').innerText = combo + '%';
-        
         document.getElementById('detail-stats-modal').classList.add('show');
     }
     
-    closeDetailStats() {
-        document.getElementById('detail-stats-modal').classList.remove('show');
-    }
+    closeDetailStats() { document.getElementById('detail-stats-modal').classList.remove('show'); }
 
     updateLobbyDisplay() {
         const hero = this.heroData[this.currentHeroIndex];
-        
-        // NOTE: generateVillains removed from here to fix the re-randomizing issue
-
         document.getElementById('lobby-hero-name').innerText = hero.name;
         document.getElementById('lobby-hero-lvl').innerText = hero.level;
         document.getElementById('lobby-hero-exp').innerText = `${hero.exp}/${hero.maxExp}`;
         document.getElementById('stat-points').innerText = `剩餘點數: ${hero.points}`;
         
-        // FIX: New HP formula: Base + (Str * 5) + (Level * 20)
         const maxHp = 100 + (hero.stats.str * 5) + (hero.level * 20);
         document.getElementById('lobby-hero-hp').innerText = maxHp;
         
@@ -1382,18 +1467,58 @@ class Game {
         this.updateStatUI('val-tec', hero.baseStats.tec, hero.stats.tec);
 
         ['str', 'agi', 'tec'].forEach(stat => {
-             const canInc = hero.points > 0;
-             const canDec = hero.stats[stat] > hero.baseStats[stat];
+             let canInc = false;
+             let canDec = false;
+             if (this.testMode) {
+                canInc = true; canDec = hero.stats[stat] > 1; 
+             } else {
+                canInc = hero.points > 0; canDec = hero.stats[stat] > hero.baseStats[stat];
+             }
              document.getElementById(`btn-inc-${stat}`).disabled = !canInc;
              document.getElementById(`btn-dec-${stat}`).disabled = !canDec;
         });
 
         this.renderPortrait(new ChibiFighter(0,0,true,'', hero.type), 'lobby-hero-portrait');
         
-        // Update Villain List
+        const skillContainer = document.getElementById('tab-content-skills');
+        skillContainer.innerHTML = '';
+        hero.ownedSkills.forEach(sid => {
+            const skill = ASSETS_DB[sid];
+            const isEquipped = hero.equippedSkills.includes(sid);
+            const el = document.createElement('div');
+            el.className = 'item-slot' + (isEquipped ? ' equipped' : '');
+            el.innerText = skill ? skill.name : '?';
+            el.onclick = () => this.openItemInfo(sid, 'skill');
+            skillContainer.appendChild(el);
+        });
+        const totalSlots = 10;
+        for(let i = hero.ownedSkills.length; i < totalSlots; i++) {
+            const el = document.createElement('div');
+            el.className = 'item-slot locked';
+            el.innerText = '鎖';
+            skillContainer.appendChild(el);
+        }
+
+        // Render Items Tab
+        const itemContainer = document.getElementById('tab-content-items');
+        itemContainer.innerHTML = '';
+        hero.ownedItems.forEach(sid => {
+            const item = ASSETS_DB[sid];
+            const isEquipped = hero.equippedSkills.includes(sid);
+            const el = document.createElement('div');
+            el.className = 'item-slot' + (isEquipped ? ' equipped' : '');
+            el.innerText = item ? item.name : '?';
+            el.onclick = () => this.openItemInfo(sid, 'item');
+            itemContainer.appendChild(el);
+        });
+        for(let i = hero.ownedItems.length; i < 12; i++) { 
+            const el = document.createElement('div');
+            el.className = 'item-slot';
+            itemContainer.appendChild(el);
+        }
+        
         const villainContainer = document.getElementById('villain-list');
         villainContainer.innerHTML = ''; 
-        
         this.villainData.forEach((v, index) => {
             const div = document.createElement('div');
             div.className = 'villain-row';
@@ -1437,17 +1562,12 @@ class Game {
         const oldY = char.y;
         const oldFacing = char.facing;
         
-        char.x = 0; 
-        char.y = 0;
-        char.facing = 1; 
+        char.x = 0; char.y = 0; char.facing = 1; 
         if (char.type.startsWith('villain')) char.facing = -1;
         
         char.draw(pCtx); 
         
-        char.x = oldX;
-        char.y = oldY;
-        char.facing = oldFacing;
-        
+        char.x = oldX; char.y = oldY; char.facing = oldFacing;
         pCtx.restore();
         container.appendChild(pCanvas);
     }
@@ -1455,11 +1575,9 @@ class Game {
     startBattleWith(villainIndex) {
         this.selectedEnemyIndex = villainIndex;
         const villain = this.villainData[villainIndex];
-        
         this.mode = 'BATTLE';
         this.lobbyView.style.display = 'none';
         this.battleView.style.display = 'block';
-        
         this.startMatch();
     }
 
@@ -1469,9 +1587,9 @@ class Game {
         this.lobbyView.style.display = 'flex';
         this.matchOver = true;
         this.showModal(null); 
-        // FIX: Refresh enemies after battle
         this.generateVillains(this.heroData[this.currentHeroIndex].level);
         this.updateLobbyDisplay(); 
+        this.saveGame(); 
     }
 
     startMatch() {
@@ -1486,6 +1604,24 @@ class Game {
         document.getElementById('p1-name').innerText = `LV.${this.p1.level} ${heroData.name}`;
         document.getElementById('p2-name').innerText = `LV.${this.p2.level} ${villain.name}`;
         
+        const battleSlots = document.getElementById('battle-slots');
+        battleSlots.innerHTML = '';
+        this.pendingSkill = null;
+
+        for(let i=0; i<8; i++) {
+            const sid = heroData.equippedSkills[i];
+            const el = document.createElement('div');
+            el.className = 'battle-slot';
+            if(sid) {
+                const asset = ASSETS_DB[sid];
+                el.innerText = asset.displayName; 
+                el.onclick = () => this.clickSkillSlot(sid, el);
+            } else {
+                el.innerText = "";
+            }
+            battleSlots.appendChild(el);
+        }
+
         this.matchOver = false;
         this.isPaused = false;
         this.activePlayer = null;
@@ -1495,12 +1631,24 @@ class Game {
         this.comboCount = 0;
         
         this.updateHealthUI();
-        // Round 1 removed
         setTimeout(() => {
             if (this.mode === 'BATTLE') {
                 this.startTurn(this.p1);
             }
         }, 500);
+    }
+    
+    clickSkillSlot(sid, el) {
+        if (this.matchOver || el.classList.contains('used')) return;
+
+        if (el.classList.contains('selected')) {
+            el.classList.remove('selected');
+            this.pendingSkill = null;
+        } else {
+            document.querySelectorAll('.battle-slot').forEach(s => s.classList.remove('selected'));
+            el.classList.add('selected');
+            this.pendingSkill = { id: sid, element: el };
+        }
     }
 
     startTurn(player) {
@@ -1528,12 +1676,6 @@ class Game {
             hero.maxExp = Math.floor(hero.maxExp * 1.2); 
             hero.points += 5;
             leveledUp = true;
-        }
-        
-        let msg = `獲得 ${amount} 經驗!`;
-        if (leveledUp) {
-            msg += `\n升級了! (LV.${hero.level})`;
-            msg += `\n獲得 5 點數!`;
             
             hero.baseStats.str += 1;
             hero.baseStats.agi += 1;
@@ -1543,6 +1685,13 @@ class Game {
             hero.stats.tec += 1;
         }
         
+        let msg = `獲得 ${amount} 經驗!`;
+        if (leveledUp) {
+            msg += `\n升級了! (LV.${hero.level})`;
+            msg += `\n獲得 5 點數!`;
+        }
+        
+        this.saveGame(); 
         this.showModal(msg, true); 
     }
 
@@ -1553,27 +1702,65 @@ class Game {
         if (this.turnPhase === PHASE.DECIDE) {
             this.turnTimer--;
             if (this.turnTimer <= 0) {
-                const rand = Math.random();
-                this.activePlayer.isCrit = false;
                 
-                const tec = this.activePlayer.stats.tec;
-                const comboChance = tec * 0.01; // FIX: 1% per TEC
-                const critActionChance = this.activePlayer.stats.agi * 0.01; // 1% per AGI
+                if (this.activePlayer === this.p1 && this.pendingSkill) {
+                    const skill = ASSETS_DB[this.pendingSkill.id];
+                    spawnDamageText(this.activePlayer.x, this.activePlayer.y - 80, skill.name + "!", 'block');
+                    
+                    this.pendingSkill.element.classList.remove('selected');
+                    this.pendingSkill.element.classList.add('used');
+                    this.pendingSkill = null;
+                    
+                    if(skill.id === 'crazy_slash') this.activePlayer.buffs.forceCombo = true;
+                    if(skill.id === 'critical_strike') this.activePlayer.buffs.forceCrit = true;
+                    if(skill.id === 'wooden_sword') {
+                         skill.effect(this.activePlayer);
+                    }
 
-                if (rand < comboChance) { 
-                    this.action = 'COMBO';
-                    // Random 2 to 5
-                    this.comboCount = Math.floor(Math.random() * 4) + 2; 
-                    this.currentHit = 1;
-                } else if (rand < comboChance + critActionChance) { 
-                    this.action = 'CRITICAL'; 
-                    // FIX: Set visual glow here
-                    this.activePlayer.isCrit = true; 
-                } else {
-                    this.action = 'ATTACK'; 
-                }
+                    this.turnPhase = PHASE.APPROACH; 
+                } 
                 
-                this.turnPhase = PHASE.APPROACH;
+                // Determine Action
+                if (this.activePlayer.buffs.forceCombo) {
+                    this.action = 'COMBO';
+                    this.comboCount = Math.floor(Math.random() * 4) + 3; 
+                    this.currentHit = 1;
+                    this.activePlayer.buffs.forceCombo = false; 
+                    this.turnPhase = PHASE.APPROACH;
+                } 
+                else if (this.activePlayer.buffs.forceCrit) {
+                    this.action = 'CRITICAL';
+                    this.activePlayer.isCrit = true;
+                    this.activePlayer.buffs.forceCrit = false;
+                    this.turnPhase = PHASE.APPROACH;
+                }
+                else if (this.turnPhase === PHASE.DECIDE && this.turnTimer <= 0) { 
+                    const rand = Math.random();
+                    this.activePlayer.isCrit = false;
+                    
+                    const tec = this.activePlayer.stats.tec;
+                    const comboChance = tec * 0.01; 
+                    const critActionChance = this.activePlayer.stats.agi * 0.01; 
+                    
+                    const weightAttack = 100;
+                    const weightCombo = tec * 2;
+                    const weightCrit = this.activePlayer.stats.agi * 2;
+                    const totalWeight = weightAttack + weightCombo + weightCrit;
+                    const decision = Math.random() * totalWeight;
+
+                    if (decision < weightAttack) { 
+                        this.action = 'ATTACK'; 
+                    } else if (decision < weightAttack + weightCombo) { 
+                        this.action = 'COMBO';
+                        this.comboCount = Math.floor(Math.random() * 4) + 2; 
+                        this.currentHit = 1;
+                    } else {
+                        this.action = 'CRITICAL'; 
+                        this.activePlayer.isCrit = true; 
+                    }
+                    
+                    this.turnPhase = PHASE.APPROACH;
+                }
             }
         } else if (this.turnPhase === PHASE.APPROACH) {
             this.activePlayer.state = STATE.RUN;
@@ -1608,9 +1795,8 @@ class Game {
             const targetAgi = this.targetPlayer.stats.agi;
             const targetTec = this.targetPlayer.stats.tec;
             
-            // FIX: Reduced coefficients
-            let dodgeChance = targetAgi * 0.004; // Reduced from 0.008
-            let blockChance = targetTec * 0.005; // Reduced from 0.01
+            let dodgeChance = targetAgi / (targetAgi + 200); 
+            let blockChance = targetTec / (targetTec + 200); 
 
             const defenseRoll = Math.random();
             let defenseType = 'NONE';
@@ -1618,26 +1804,20 @@ class Game {
             if (defenseRoll < dodgeChance) defenseType = 'DODGE';
             else if (defenseRoll < dodgeChance + blockChance) defenseType = 'BLOCK';
             
-            // New Base Damage Formula
             let baseDmg = (atkStr * 0.5) + (atkAg * 0.25) + (atkTec * 0.25);
+            // Apply Item Buff
+            baseDmg *= this.activePlayer.buffs.atkMultiplier;
+
             let dmg = Math.floor(baseDmg + Math.random() * 4);
             let type = 'normal';
             
             let critChance = atkAg * 0.01;
             if (this.action === 'CRITICAL') {
-                // FIX: Guaranteed crit if action was Critical (glow)
                 dmg = Math.floor(dmg * 2.0); 
                 type = 'crit';
             } else if (this.action === 'COMBO') { 
-                dmg = Math.floor(dmg * 0.6); 
+                dmg = Math.floor(dmg * 0.8); 
                 type = 'combo'; 
-            } else {
-                if (Math.random() < critChance) {
-                    dmg *= 2;
-                    type = 'crit';
-                    // FIX: Set glow for random crit too
-                    this.activePlayer.isCrit = true;
-                }
             }
 
             if (defenseType === 'DODGE') {
@@ -1655,7 +1835,7 @@ class Game {
                 this.targetPlayer.hp -= dmg;
                 this.targetPlayer.state = STATE.HIT;
                 let dmgX = this.targetPlayer.x - (this.targetPlayer.isP1 ? -60 : 60);
-                let displayText = (type === 'crit') ? "CRIT " + dmg : ((type === 'combo') ? (4 - this.comboCount) + "hit " + dmg : dmg);
+                let displayText = (type === 'crit') ? "CRIT " + dmg : ((type === 'combo') ? this.currentHit + "hit " + dmg : dmg);
                 spawnDamageText(dmgX, this.targetPlayer.y, displayText, type);
                 for(let i=0; i<5; i++) this.particles.push(new Particle(this.targetPlayer.x, this.targetPlayer.y - 40, 'dust'));
             }
@@ -1671,10 +1851,9 @@ class Game {
             
             if (this.targetPlayer.hp <= 0) {
                 this.matchOver = true;
-                // Victory!
                 if (this.activePlayer.isP1) {
                     const enemyLevel = this.targetPlayer.level;
-                    this.gainExp(enemyLevel * 50); // Changed from 30 to 50
+                    this.gainExp(enemyLevel * 50); 
                 } else {
                     this.showModal(this.activePlayer.name + " WIN!", true);
                 }
