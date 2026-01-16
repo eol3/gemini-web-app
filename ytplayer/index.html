@@ -75,6 +75,8 @@
         .video-player {
             width: 100%;
             aspect-ratio: 16 / 9;
+            height: auto;
+            max-height: 60vh;
             background: #000;
         }
 
@@ -719,7 +721,7 @@
 
             console.log('初始化 YouTube 播放器');
             youtubePlayer = new YT.Player('yt-player', {
-                height: '400',
+                height: '100%',
                 width: '100%',
                 videoId: '', // 不设置默认视频
                 events: {
