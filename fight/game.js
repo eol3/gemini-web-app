@@ -439,7 +439,7 @@ class Game {
 
             const el = document.createElement('div');
             el.className = 'item-slot' + (isEquipped ? ' equipped' : '');
-            el.innerText = skill ? skill.displayName : '?';
+            el.innerText = skill ? skill.displayName : (sid || '未知');
             el.onclick = () => this.openItemInfo(sid, 'skill');
             skillContainer.appendChild(el);
         });
@@ -455,13 +455,14 @@ class Game {
         itemContainer.innerHTML = '';
         
         hero.ownedItems.forEach((itemInstance) => {
-            const item = ASSETS_DB[itemInstance.id];
+            const itemId = itemInstance.id || itemInstance;
+            const item = ASSETS_DB[itemId];
             // An item is equipped if an object with its index exists in equippedSkills
             const isEquipped = hero.equippedSkills.includes(itemInstance.instanceId);
             
             const el = document.createElement('div');
             el.className = 'item-slot' + (isEquipped ? ' equipped' : '');
-            el.innerText = item ? item.displayName : '?';
+            el.innerText = item ? item.displayName : (itemId || '未知');
             el.onclick = () => this.openItemInfo(itemInstance, 'item');
             itemContainer.appendChild(el);
         });

@@ -154,10 +154,11 @@ class ChibiFighter {
         if (this.state === STATE.RUN) bobY = Math.sin(this.animFrame * 0.5) * 5;
         if (this.state === STATE.WIN) bobY = Math.sin(this.animFrame * 0.2) * 5;
 
-        let colors = { pants: '#37474f', body: '#546e7a', skin: '#ffccbc', hair: '#78909c', detail: '#cfd8dc', acc: '#fff', eye: '#000' };
+        // Q版风格配色
+        let colors = { pants: '#37474f', body: '#546e7a', skin: '#ffccbc', hair: '#c4a75b', detail: '#cfd8dc', acc: '#fff', eye: '#2c2c2c' };
 
         if (this.type === 'girl') {
-            colors = { pants: '#1565c0', body: '#ff7043', skin: '#ffccbc', hair: '#d84315', detail: '#fff', acc: '#d84315', eye: '#3e2723' };
+            colors = { pants: '#1565c0', body: '#ff7043', skin: '#ffccbc', hair: '#e8632c', detail: '#fff', acc: '#d84315', eye: '#3e2723' };
         } else if (this.type.startsWith('villain')) {
             colors = { pants: '#212121', body: '#000000', skin: '#e0e0e0', hair: '#424242', detail: '#757575', acc: '#212121', eye: '#d50000' };
             if (this.type === 'villain_2') colors.hair = '#3e2723'; 
@@ -184,276 +185,457 @@ class ChibiFighter {
         // Default is Wolf/Goblin model
 
         if (!isGirlModel) {
-            // WOLF
+            // == WOLF - Q版风格 ==
+            ctx.translate(0, bobY);
+            
+            // Legs - 圆形
+            ctx.fillStyle = colors.pants;
+            if (this.state === STATE.RUN || this.state === STATE.WIN) {
+                let lOffset = (this.state===STATE.WIN) ? 0 : Math.sin(this.animFrame * 0.5) * 10;
+                // Left leg
+                ctx.beginPath(); ctx.ellipse(-9 + lOffset, -8, 8, 11, 0, 0, Math.PI * 2); ctx.fill();
+                // Right leg
+                ctx.beginPath(); ctx.ellipse(11 - lOffset, -8, 8, 11, 0, 0, Math.PI * 2); ctx.fill();
+            } else {
+                // Left leg
+                ctx.beginPath(); ctx.ellipse(-9, -8, 8, 11, 0, 0, Math.PI * 2); ctx.fill();
+                // Right leg
+                ctx.beginPath(); ctx.ellipse(11, -8, 8, 11, 0, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // Body - 圆润的梯形
+            const bodyGrad = ctx.createLinearGradient(0, -50, 0, -15);
+            bodyGrad.addColorStop(0, colors.body);
+            bodyGrad.addColorStop(1, '#2c3e50');
+            ctx.fillStyle = bodyGrad;
+            ctx.beginPath();
+            ctx.moveTo(-18, -48);
+            ctx.quadraticCurveTo(-22, -35, -15, -10);
+            ctx.lineTo(15, -10);
+            ctx.quadraticCurveTo(22, -35, 18, -48);
+            ctx.quadraticCurveTo(0, -55, -18, -48);
+            ctx.closePath();
+            ctx.fill();
+            // Body outline
+            ctx.strokeStyle = 'rgba(26, 37, 47, 0.2)';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            // Head - 大圆头
+            const headGrad = ctx.createRadialGradient(-1, -72, 10, 0, -68, 32);
+            headGrad.addColorStop(0, '#fff0e6');
+            headGrad.addColorStop(0.5, '#ffe0d2');
+            headGrad.addColorStop(1, colors.skin);
+            ctx.fillStyle = headGrad;
+            ctx.beginPath(); ctx.arc(-1, -68, 28, 0, Math.PI * 2); ctx.fill();
+            // Head shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.beginPath(); ctx.arc(-1, -65, 28, 0, Math.PI * 2); ctx.fill();
+
+            // Hair - 蓬松
+            ctx.fillStyle = colors.hair;
+            ctx.beginPath();
+            ctx.arc(-1, -75, 32, Math.PI, Math.PI * 2.2);
+            ctx.lineTo(25, -50);
+            ctx.lineTo(-25, -50);
+            ctx.fill();
+            
+            // Hair shine
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath(); ctx.arc(-12, -85, 12, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath(); ctx.arc(6, -92, 8, 0, Math.PI * 2); ctx.fill();
+            
+            // Hair strands
+            ctx.fillStyle = colors.hair;
+            ctx.beginPath(); ctx.moveTo(-20, -90); ctx.lineTo(-28, -100); ctx.lineTo(-10, -95); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(10, -95); ctx.lineTo(20, -100); ctx.lineTo(16, -90); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-24, -80); ctx.lineTo(-32, -90); ctx.lineTo(-22, -85); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(24, -80); ctx.lineTo(32, -90); ctx.lineTo(22, -85); ctx.fill();
+
+            // Goblin ears
+            if (this.type === 'goblin') {
+                ctx.fillStyle = colors.skin;
+                ctx.beginPath(); ctx.moveTo(-22, -75); ctx.lineTo(-37, -80); ctx.lineTo(-32, -65); ctx.fill();
+                ctx.beginPath(); ctx.moveTo(22, -75); ctx.lineTo(37, -80); ctx.lineTo(32, -65); ctx.fill();
+            }
+
+            // Eyes & Mouth
+            if (this.state === STATE.HIT || this.state === STATE.DEAD) {
+                ctx.fillStyle = colors.eye;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(3, -72); ctx.lineTo(9, -66); ctx.moveTo(9, -72); ctx.lineTo(3, -66);
+                ctx.moveTo(13, -72); ctx.lineTo(19, -66); ctx.moveTo(19, -72); ctx.lineTo(13, -66);
+                ctx.stroke();
+                ctx.beginPath(); ctx.arc(11, -58, 4, Math.PI * 0.1, Math.PI * 0.9, true); ctx.stroke();
+            } else if (this.state === STATE.BLOCK) {
+                ctx.fillStyle = colors.eye;
+                ctx.fillRect(3, -70, 5, 2);
+                ctx.fillRect(13, -70, 5, 2);
+            } else if (this.state === STATE.WIN) {
+                ctx.fillStyle = colors.eye;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(6, -70, 4, Math.PI, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(16, -70, 4, Math.PI, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(11, -60, 5, 0, Math.PI); ctx.stroke();
+            } else if (this.state === STATE.ATTACK) {
+                ctx.fillStyle = colors.eye;
+                ctx.lineWidth = 2;
+                ctx.beginPath(); ctx.moveTo(2, -74); ctx.lineTo(10, -72); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(12, -72); ctx.lineTo(20, -74); ctx.stroke();
+                // Eyes with pupils
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath(); ctx.arc(6, -70, 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(16, -70, 3.5, 0, Math.PI * 2); ctx.fill();
+                // Pupils
+                ctx.fillStyle = '#000';
+                ctx.beginPath(); ctx.arc(6, -71, 2, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(16, -71, 2, 0, Math.PI * 2); ctx.fill();
+            } else {
+                // Normal eyes - 大眼睛
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                ctx.beginPath();
+                ctx.arc(5, -70, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(17, -70, 5, 0, Math.PI * 2);
+                ctx.fill();
+                // Pupils
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath();
+                ctx.arc(6, -69, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(18, -69, 3, 0, Math.PI * 2);
+                ctx.fill();
+                // Eye shine
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(7, -71, 1.3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(19, -71, 1.3, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath(); ctx.arc(5, -67, 1, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(17, -67, 1, 0, Math.PI * 2); ctx.fill();
+                
+                // Mouth
+                ctx.strokeStyle = colors.eye;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(11, -55, 4, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+                
+                // Blush
+                ctx.fillStyle = 'rgba(255, 130, 180, 0.35)';
+                ctx.beginPath(); ctx.arc(-5, -61, 5.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(27, -61, 5.5, 0, Math.PI * 2); ctx.fill();
+            }
+
+            // Arms
+            if (this.state === STATE.ATTACK) {
+                ctx.save();
+                if (this.isCrit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ffd700'; }
+                let swing = Math.sin(this.animFrame * 0.2);
+                ctx.translate(8, -55);
+                ctx.rotate(swing - 0.5);
+                
+                // Arm drawing
+                ctx.fillStyle = colors.skin;
+                ctx.beginPath();
+                ctx.ellipse(15, 0, 16, 8, 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Hand
+                ctx.fillStyle = '#d4a574';
+                ctx.beginPath();
+                ctx.ellipse(35, 0, 7, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            } else if (this.state === STATE.BLOCK) {
+                ctx.save();
+                ctx.translate(15, -55);
+                ctx.rotate(-1.5);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(10, 5, 11, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else if (this.state === STATE.WIN) {
+                // Both arms up
+                ctx.save();
+                ctx.translate(-12, -60);
+                ctx.rotate(-2.5);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(12, 5, 12, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                ctx.save();
+                ctx.translate(12, -60);
+                ctx.rotate(-0.5);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(12, 5, 12, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            } else if (this.state === STATE.SPECIAL) {
+                const shake = Math.sin(this.animFrame * 0.8) * 2;
+                ctx.translate(shake, 0);
+                ctx.shadowBlur = 30;
+                ctx.shadowColor = '#ffcc00';
+                
+                // Arms up
+                ctx.save();
+                ctx.translate(-12, -60);
+                ctx.rotate(-2.5);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(12, 5, 12, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                ctx.save();
+                ctx.translate(12, -60);
+                ctx.rotate(-0.5);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(12, 5, 12, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                // Mouth
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath();
+                ctx.arc(11, -60, 5, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (this.state === STATE.DEAD) {
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(-5, -40, 6, 12, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Rest arms
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(-8, -37, 6, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(8, -37, 6, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+        } else {
+            // == GIRL - Q版风格 ==
+            ctx.translate(0, bobY);
+            
             // Legs
             ctx.fillStyle = colors.pants;
             if (this.state === STATE.RUN || this.state === STATE.WIN) {
                 let lOffset = (this.state===STATE.WIN) ? 0 : Math.sin(this.animFrame * 0.5) * 10;
-                ctx.fillRect(-15 + lOffset, -20, 12, 20); ctx.fillRect(5 - lOffset, -20, 12, 20);
+                ctx.beginPath(); ctx.ellipse(-9 + lOffset, -8, 7.5, 11, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(11 - lOffset, -8, 7.5, 11, 0, 0, Math.PI * 2); ctx.fill();
             } else {
-                ctx.fillRect(-15, -20, 12, 20); ctx.fillRect(5, -20, 12, 20);
+                ctx.beginPath(); ctx.ellipse(-9, -8, 7.5, 11, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.ellipse(11, -8, 7.5, 11, 0, 0, Math.PI * 2); ctx.fill();
             }
-            
-            ctx.translate(0, bobY);
 
-            // Body & Clothes
-            const bodyGrad = ctx.createLinearGradient(0, -50, 0, -15);
-            bodyGrad.addColorStop(0, colors.body);
-            bodyGrad.addColorStop(1, '#2c3e50'); // Darker shade for body
-            ctx.fillStyle = bodyGrad;
+            // Body - Girl版
+            const girlBodyGrad = ctx.createLinearGradient(0, -50, 0, -15);
+            girlBodyGrad.addColorStop(0, colors.body);
+            girlBodyGrad.addColorStop(1, '#c0392b');
+            ctx.fillStyle = girlBodyGrad;
             ctx.beginPath();
-            ctx.moveTo(-18, -50); ctx.lineTo(18, -50);
-            ctx.lineTo(15, -15); ctx.lineTo(-15, -15);
+            ctx.moveTo(-16, -48);
+            ctx.quadraticCurveTo(-20, -35, -13, -10);
+            ctx.lineTo(13, -10);
+            ctx.quadraticCurveTo(20, -35, 16, -48);
+            ctx.quadraticCurveTo(0, -55, -16, -48);
             ctx.closePath();
             ctx.fill();
+            ctx.strokeStyle = 'rgba(160, 39, 30, 0.2)';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
 
-            // Head
-            ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(0, -65, 22, 0, Math.PI * 2); ctx.fill();
+            // Head - Girl
+            const girlHeadGrad = ctx.createRadialGradient(-1, -72, 10, 0, -68, 30);
+            girlHeadGrad.addColorStop(0, '#fff0e6');
+            girlHeadGrad.addColorStop(0.5, '#ffe0d2');
+            girlHeadGrad.addColorStop(1, colors.skin);
+            ctx.fillStyle = girlHeadGrad;
+            ctx.beginPath(); ctx.arc(-1, -68, 26, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(0,0,0,0.08)';
+            ctx.beginPath(); ctx.arc(-1, -65, 26, 0, Math.PI * 2); ctx.fill();
 
-            // Hair
-            ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, -68, 24, Math.PI, Math.PI * 2.2); ctx.lineTo(20, -50); ctx.lineTo(-20, -50); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(-15, -85); ctx.lineTo(-22, -95); ctx.lineTo(-8, -90); ctx.fill(); 
-            ctx.beginPath(); ctx.moveTo(5, -90); ctx.lineTo(15, -95); ctx.lineTo(12, -85); ctx.fill();
-
-            // Goblin specific features
-            if (this.type === 'goblin') {
-                // Big ears
-                ctx.fillStyle = colors.skin;
-                ctx.beginPath(); ctx.moveTo(-20, -75); ctx.lineTo(-35, -80); ctx.lineTo(-30, -65); ctx.fill();
-                ctx.beginPath(); ctx.moveTo(20, -75); ctx.lineTo(35, -80); ctx.lineTo(30, -65); ctx.fill();
-            }
-
-            // Eyes & Mouth
-            ctx.fillStyle = colors.eye;
-            if (isBoarModel) { // Boar snout
-                drawEllipse(ctx, 15, -60, 12, 8, colors.skin);
-                drawEllipse(ctx, 22, -62, 3, 2, '#5d4037');
-            }
+            // Hair - Girl
+            ctx.fillStyle = colors.hair;
             ctx.beginPath();
+            ctx.arc(-1, -75, 30, Math.PI * 0.8, Math.PI * 2.2);
+            ctx.fill();
+            
+            // Hair shine
+            ctx.fillStyle = 'rgba(255,255,255,0.35)';
+            ctx.beginPath(); ctx.arc(-10, -85, 11, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.beginPath(); ctx.arc(5, -91, 7, 0, Math.PI * 2); ctx.fill();
+            
+            // Hair side pieces
+            if (this.type === 'treant') {
+                ctx.fillStyle = '#689f38';
+                drawEllipse(ctx, -20, -88, 17, 13, '#689f38');
+                drawEllipse(ctx, 0, -93, 18, 15, '#7cb342');
+                drawEllipse(ctx, 20, -88, 17, 13, '#8bc34a');
+                ctx.fillStyle = 'rgba(255,255,255,0.25)';
+                drawEllipse(ctx, -18, -91, 10, 8, 'rgba(255,255,255,0.25)');
+                drawEllipse(ctx, 2, -95, 10, 9, 'rgba(255,255,255,0.25)');
+            } else {
+                drawEllipse(ctx, -22, -77, 13, 13, colors.hair);
+                drawEllipse(ctx, 14, -79, 11, 11, colors.hair);
+                // Ribbons
+                ctx.fillStyle = colors.detail;
+                ctx.fillRect(15, -77, 4, 13);
+                ctx.fillStyle = 'rgba(255,255,255,0.35)';
+                ctx.fillRect(15, -75, 3, 5);
+            }
+
+            // Eyes - Girl (bigger)
             if (this.state === STATE.HIT || this.state === STATE.DEAD) {
-                ctx.moveTo(3, -70); ctx.lineTo(9, -64); ctx.moveTo(9, -70); ctx.lineTo(3, -64);
-                ctx.moveTo(13, -70); ctx.lineTo(19, -64); ctx.moveTo(19, -70); ctx.lineTo(13, -64);
+                ctx.fillStyle = colors.eye;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(3, -70); ctx.lineTo(9, -64); ctx.lineTo(3, -58);
+                ctx.moveTo(13, -70); ctx.lineTo(19, -64); ctx.lineTo(13, -58);
                 ctx.stroke();
                 ctx.beginPath(); ctx.arc(11, -56, 4, Math.PI * 0.1, Math.PI * 0.9, true); ctx.stroke();
             } else if (this.state === STATE.BLOCK) {
-                 ctx.fillRect(3, -68, 6, 2);
-                 ctx.fillRect(13, -68, 6, 2);
-            } else if (this.state === STATE.WIN) {
-                 ctx.beginPath(); ctx.arc(6, -68, 4, Math.PI, Math.PI * 2); ctx.stroke();
-                 ctx.beginPath(); ctx.arc(16, -68, 4, Math.PI, Math.PI * 2); ctx.stroke();
-                 ctx.beginPath(); ctx.arc(11, -60, 5, 0, Math.PI); ctx.stroke();
-            } else if (this.state === STATE.ATTACK) {
-                // Angry eyebrows for attack
-                ctx.beginPath(); ctx.moveTo(2, -72); ctx.lineTo(10, -70); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(12, -70); ctx.lineTo(20, -72); ctx.stroke();
-                ctx.fillRect(4, -68, 5, 2); // Eyes
-                ctx.fillRect(14, -68, 5, 2);
-            } else {
-                ctx.beginPath();
-                ctx.arc(6, -68, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(16, -68, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-                
-                ctx.fillRect(10.5, -63, 1, 2);
-                
-                ctx.beginPath();
-                ctx.moveTo(8, -58); ctx.lineTo(14, -58);
-                ctx.stroke();
-            }
-
-            if (this.state === STATE.ATTACK) {
-                ctx.save();
-                if (this.isCrit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ffd700'; }
-                let swing = Math.sin(this.animFrame * 0.2); 
-                ctx.translate(5, -55); ctx.rotate(swing - 0.5); 
-                
-                // Draw Sword if holding
-                if (this.holdingWeapon === 'wooden_sword') {
-                    ctx.save();
-                    ctx.translate(35, 5); // Hand pos
-                    ctx.rotate(-1.2); // Angle sword up
-                    ctx.fillStyle = '#8d6e63'; // Wood color
-                    ctx.fillRect(0, -3, 50, 6); // Blade
-                    ctx.fillStyle = '#5d4037'; // Hilt
-                    ctx.fillRect(-10, -3, 10, 6); 
-                    ctx.fillRect(0, -8, 4, 16); // Crossguard
-                    ctx.restore();
-                }
-                // Draw Dagger
-                if (this.holdingWeapon === 'dagger') {
-                    ctx.save();
-                    ctx.translate(35, 5);
-                    ctx.rotate(1.8); // Reverse grip
-                    ctx.fillStyle = '#b0bec5'; // Silver blade
-                    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(25, -5); ctx.lineTo(30, 0); ctx.lineTo(25, 5); ctx.fill();
-                    ctx.fillStyle = '#37474f'; // Hilt
-                    ctx.fillRect(-8, -3, 8, 6);
-                    ctx.restore();
-                }
-
-
-                ctx.fillStyle = this.isCrit ? '#fff' : colors.body; 
-                ctx.fillRect(0, -5, 30, 12); 
-                ctx.fillStyle = colors.skin; ctx.fillRect(30, -5, 12, 12); 
-                ctx.fillStyle = this.isCrit ? '#ffff00' : '#eee'; 
-                ctx.beginPath(); ctx.moveTo(42, -5); ctx.lineTo(52, 0); ctx.lineTo(42, 5); ctx.fill();
-                ctx.restore();
-            } else if (this.state === STATE.BLOCK) {
-                ctx.save(); ctx.translate(15, -55); ctx.rotate(-1.5); ctx.fillRect(0, 0, 20, 10); ctx.restore();
-            } else if (this.state === STATE.WIN) {
-                ctx.save(); ctx.translate(-10, -55); ctx.rotate(-2.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
-                ctx.save(); ctx.translate(10, -55); ctx.rotate(-0.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
-            } else if (this.state === STATE.SPECIAL) {
-                // Special Skill Pose (Power up)
-                const shake = Math.sin(this.animFrame * 0.8) * 2;
-                ctx.translate(shake, 0);
-                ctx.shadowBlur = 30; 
-                ctx.shadowColor = '#ffcc00'; 
-                
-                ctx.fillStyle = colors.body;
-                // Left arm up
-                ctx.save(); ctx.translate(-12, -55); ctx.rotate(-2.5); ctx.fillRect(0, 0, 25, 10); ctx.restore();
-                // Right arm up
-                ctx.save(); ctx.translate(12, -55); ctx.rotate(-0.6); ctx.fillRect(0, 0, 25, 10); ctx.restore();
-                
-                // Head up
-                // Shouting mouth
                 ctx.fillStyle = colors.eye;
-                ctx.beginPath();
-                ctx.arc(11, -58, 5, 0, Math.PI * 2); ctx.fill();
-            } else if (this.state === STATE.DEAD) {
-                ctx.fillRect(-10, -50, 10, 25);
-            } else {
-                ctx.fillRect(-5, -50, 10, 25);
-            }
-
-        } else {
-            // == GIRL ==
-            ctx.fillStyle = colors.pants;
-            if (this.state === STATE.RUN || this.state === STATE.WIN) {
-                let lOffset = (this.state===STATE.WIN) ? 0 : Math.sin(this.animFrame * 0.5) * 10;
-                ctx.fillRect(-15 + lOffset, -20, 12, 20); ctx.fillRect(5 - lOffset, -20, 12, 20);
-            } else {
-                ctx.fillRect(-15, -20, 12, 20); ctx.fillRect(5, -20, 12, 20);
-            }
-
-            ctx.translate(0, bobY);
-
-            // Body & Clothes (Girl)
-            const girlBodyGrad = ctx.createLinearGradient(0, -50, 0, -15);
-            girlBodyGrad.addColorStop(0, colors.body);
-            girlBodyGrad.addColorStop(1, '#c0392b'); // Darker red
-            ctx.fillStyle = girlBodyGrad;
-            ctx.beginPath();
-            ctx.moveTo(-15, -50); ctx.lineTo(15, -50);
-            ctx.lineTo(12, -15); ctx.lineTo(-12, -15);
-            ctx.closePath();
-            ctx.fill();
-
-            // Head
-            ctx.fillStyle = colors.skin; ctx.beginPath(); ctx.arc(0, -65, 20, 0, Math.PI * 2); ctx.fill();
-
-            // Hair (Girl)
-            ctx.fillStyle = colors.hair; ctx.beginPath(); ctx.arc(0, -68, 22, Math.PI * 0.8, Math.PI * 2.2); ctx.fill();
-            if (this.type === 'treant') { // Leaves for hair
-                drawEllipse(ctx, -15, -85, 15, 10, '#689f38');
-                drawEllipse(ctx, 0, -90, 15, 12, '#7cb342');
-                drawEllipse(ctx, 15, -85, 15, 10, '#8bc34a');
-            } else {
-                drawEllipse(ctx, -18, -75, 10, 10, colors.hair);
-            }
-            drawEllipse(ctx, 10, -78, 8, 8, colors.hair);
-            ctx.fillStyle = colors.detail; ctx.fillRect(12, -75, 4, 10);
-
-            // Eyes & Mouth (Girl)
-            ctx.fillStyle = colors.eye;
-            if (this.state === STATE.HIT || this.state === STATE.DEAD) {
-                ctx.beginPath();
-                ctx.moveTo(2, -69); ctx.lineTo(8, -65); ctx.lineTo(2, -61);
-                ctx.moveTo(18, -69); ctx.lineTo(12, -65); ctx.lineTo(18, -61);
-                ctx.stroke();
-                ctx.beginPath(); ctx.arc(10, -55, 4, Math.PI * 0.1, Math.PI * 0.9, true); ctx.stroke();
-            } else if (this.state === STATE.BLOCK) {
-                 ctx.fillRect(4, -67, 5, 2);
-                 ctx.fillRect(12, -67, 5, 2);
+                ctx.fillRect(4, -69, 5, 2);
+                ctx.fillRect(13, -69, 5, 2);
             } else if (this.state === STATE.WIN) {
-                 ctx.beginPath(); ctx.arc(6, -65, 3, Math.PI, Math.PI * 2); ctx.stroke();
-                 ctx.beginPath(); ctx.arc(14, -65, 3, Math.PI, Math.PI * 2); ctx.stroke();
-                 ctx.beginPath(); ctx.arc(10, -58, 4, 0, Math.PI); ctx.stroke();
+                ctx.fillStyle = colors.eye;
+                ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.arc(7, -67, 3.5, Math.PI, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(15, -67, 3.5, Math.PI, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.arc(11, -60, 4.5, 0, Math.PI); ctx.stroke();
             } else {
-                ctx.beginPath();
-                ctx.arc(6, -66, 2.5, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(14, -66, 2.5, 0, Math.PI * 2);
-                ctx.fill();
+                // Normal eyes - Girl
+                ctx.fillStyle = 'rgba(255,255,255,0.92)';
+                ctx.beginPath(); ctx.arc(5, -68, 5.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(17, -68, 5.5, 0, Math.PI * 2); ctx.fill();
                 
-                ctx.fillRect(9.5, -62, 1, 2);
-                ctx.beginPath(); ctx.arc(10, -57, 2.5, 0, Math.PI); ctx.stroke();
+                ctx.fillStyle = colors.eye;
+                ctx.beginPath(); ctx.arc(6, -67, 3, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(18, -67, 3, 0, Math.PI * 2); ctx.fill();
+                
+                ctx.fillStyle = '#fff';
+                ctx.beginPath(); ctx.arc(7.5, -69, 1.5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(19.5, -69, 1.5, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.beginPath(); ctx.arc(5, -66, 1.1, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(17, -66, 1.1, 0, Math.PI * 2); ctx.fill();
+                
+                // Eyelashes
+                ctx.strokeStyle = colors.eye;
+                ctx.lineWidth = 1.2;
+                ctx.beginPath(); ctx.moveTo(2, -73); ctx.lineTo(0, -75); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(8, -73); ctx.lineTo(10, -75); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(12, -73); ctx.lineTo(10, -75); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(18, -73); ctx.lineTo(20, -75); ctx.stroke();
+                
+                // Mouth
+                ctx.strokeStyle = colors.eye;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(11, -56, 3.5, 0.2, Math.PI - 0.2);
+                ctx.stroke();
+                
+                // Blush - Girl
+                ctx.fillStyle = 'rgba(255, 130, 180, 0.4)';
+                ctx.beginPath(); ctx.arc(-4, -62, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath(); ctx.arc(26, -62, 6, 0, Math.PI * 2); ctx.fill();
             }
 
-            ctx.fillStyle = colors.skin; 
+            // Girl Arms
             if (this.state === STATE.ATTACK) {
                 ctx.save();
                 if (this.isCrit) { ctx.shadowBlur = 20; ctx.shadowColor = '#ff5252'; }
-                let swing = Math.sin(this.animFrame * 0.2); 
-                ctx.translate(10, -55); ctx.rotate(swing - 0.5); 
-                ctx.fillStyle = colors.skin; ctx.fillRect(0, 0, 20, 8); 
+                let swing = Math.sin(this.animFrame * 0.2);
+                ctx.translate(12, -55);
+                ctx.rotate(swing - 0.5);
                 
-                // Draw Sword if holding
-                if (this.holdingWeapon === 'wooden_sword') {
-                    ctx.save();
-                    ctx.translate(10, 4); // Hand pos
-                    ctx.rotate(-1.2);
-                    ctx.fillStyle = '#8d6e63';
-                    ctx.fillRect(0, -2, 50, 4);
-                    ctx.fillStyle = '#5d4037';
-                    ctx.fillRect(-10, -2, 10, 4);
-                    ctx.fillRect(0, -6, 4, 12);
-                    ctx.restore();
-                }
-                // Draw Dagger
-                if (this.holdingWeapon === 'dagger') {
-                    ctx.save();
-                    ctx.translate(10, 4);
-                    ctx.rotate(1.8); // Reverse grip
-                    ctx.fillStyle = '#b0bec5'; // Silver blade
-                    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(25, -5); ctx.lineTo(30, 0); ctx.lineTo(25, 5); ctx.fill();
-                    ctx.fillStyle = '#37474f'; // Hilt
-                    ctx.fillRect(-8, -3, 8, 6);
-                    ctx.restore();
-                }
-
-                ctx.translate(20, 0); ctx.rotate(1.2); 
-                ctx.fillStyle = '#8d6e63'; ctx.fillRect(-2, -20, 4, 50); 
-                ctx.fillStyle = this.isCrit ? '#ffecb3' : '#757575'; ctx.fillRect(-12, -30, 24, 18);
-                ctx.strokeStyle = this.isCrit ? '#ff6f00' : '#bdbdbd'; ctx.lineWidth = 2; ctx.strokeRect(-12, -30, 24, 18);
+                const armGrad = ctx.createLinearGradient(0, 0, 20, 8);
+                armGrad.addColorStop(0, colors.skin);
+                armGrad.addColorStop(1, '#d7a896');
+                ctx.fillStyle = armGrad;
+                ctx.beginPath();
+                ctx.ellipse(10, 4, 11, 6, 0.1, 0, Math.PI * 2);
+                ctx.fill();
+                
                 ctx.restore();
             } else if (this.state === STATE.BLOCK) {
-                ctx.save(); ctx.translate(15, -55); ctx.rotate(-1.5); ctx.fillRect(0, 0, 20, 8); ctx.restore();
+                ctx.save();
+                ctx.translate(15, -55);
+                ctx.rotate(-1.5);
+                const armGrad = ctx.createLinearGradient(0, 0, 20, 8);
+                armGrad.addColorStop(0, colors.skin);
+                armGrad.addColorStop(1, '#d7a896');
+                ctx.fillStyle = armGrad;
+                ctx.beginPath();
+                ctx.ellipse(10, 4, 11, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             } else if (this.state === STATE.WIN) {
-                ctx.save(); ctx.translate(15, -65); ctx.rotate(-2.0); ctx.fillStyle = colors.skin; ctx.fillRect(0, 0, 20, 8);
-                ctx.rotate(1.5); ctx.fillStyle = '#8d6e63'; ctx.fillRect(20, -20, 4, 50); 
-                ctx.fillStyle = '#757575'; ctx.fillRect(-12, -30, 24, 18); ctx.restore();
+                ctx.save();
+                ctx.translate(15, -65);
+                ctx.rotate(-2.0);
+                const armGrad = ctx.createLinearGradient(0, 0, 20, 8);
+                armGrad.addColorStop(0, colors.skin);
+                armGrad.addColorStop(1, '#d7a896');
+                ctx.fillStyle = armGrad;
+                ctx.beginPath();
+                ctx.ellipse(10, 4, 11, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
             } else if (this.state === STATE.SPECIAL) {
-                // Special Skill Pose for Girl
                 const shake = Math.sin(this.animFrame * 1.2) * 3;
                 ctx.translate(shake, 0);
-                ctx.shadowBlur = 40; ctx.shadowColor = '#ff5252';
-                ctx.fillStyle = colors.skin; 
-                // 雙手向下蓄力
-                ctx.save(); ctx.translate(-10, -45); ctx.rotate(0.8); ctx.fillRect(-15, 0, 20, 8); ctx.restore(); // Right arm
-                ctx.save(); ctx.translate(10, -45); ctx.rotate(-0.8); ctx.fillRect(0, 0, 20, 8); ctx.restore(); // Left Arm
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = '#ff5252';
                 
-                // 力量特效
+                const armGrad = ctx.createLinearGradient(0, -45, 0, -35);
+                armGrad.addColorStop(0, colors.skin);
+                armGrad.addColorStop(1, '#d7a896');
+                ctx.fillStyle = armGrad;
+                
+                ctx.save();
+                ctx.translate(-10, -45);
+                ctx.rotate(0.8);
+                ctx.beginPath();
+                ctx.ellipse(-7, 4, 11, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                ctx.save();
+                ctx.translate(10, -45);
+                ctx.rotate(-0.8);
+                ctx.beginPath();
+                ctx.ellipse(7, 4, 11, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
                 drawEllipse(ctx, 0, 5, 30 + shake, 10, 'rgba(255, 82, 82, 0.3)');
                 drawEllipse(ctx, 0, 5, 20 + shake, 6, 'rgba(255, 204, 188, 0.5)');
             } else if (this.state === STATE.DEAD) {
-                ctx.fillRect(10, -50, 8, 20);
+                ctx.fillStyle = colors.body;
+                ctx.beginPath();
+                ctx.ellipse(-5, -40, 6, 12, -0.3, 0, Math.PI * 2);
+                ctx.fill();
             } else {
-                ctx.fillRect(10, -50, 8, 20);
+                // Rest arms - Girl
+                ctx.fillStyle = colors.skin;
+                ctx.fillRect(-12, -47, 5, 18);
+                ctx.fillRect(7, -47, 5, 18);
+                // Hands
+                ctx.fillStyle = '#d4a574';
+                ctx.fillRect(-12, -30, 5, 4);
+                ctx.fillRect(7, -30, 5, 4);
             }
         }
 
