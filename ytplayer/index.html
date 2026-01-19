@@ -1,460 +1,697 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube 播放器</title>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome for Icons -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px 0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube 播放器</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome for Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px 0;
+    }
 
-        #app {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+    #app {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
 
-        .main-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-        }
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+    }
 
-        .sidebar {
-            width: 100%;
-            max-width: 900px;
-        }
+    /* Removed old sidebar, main-content, bottom-container, input-wrapper */
+    /* .sidebar, .main-content, .bottom-container, .input-wrapper { display: none; } */
 
-        .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            width: 100%;
-            max-width: 900px;
-        }
+    .player-wrapper {
+      width: 100%;
+      max-width: 100%;
+    }
 
-        .player-wrapper {
-            width: 100%;
-            max-width: 900px;
-        }
+    .playlist-wrapper {
+      width: 100%;
+      max-width: 100%;
+    }
 
-        .bottom-container {
-            width: 100%;
-        }
+    /* Lower Content Split View */
+    .lower-content-row {
+      display: flex;
+      gap: 20px;
+      width: 100%;
+      align-items: flex-start;
+    }
 
-        .input-wrapper {
-            width: 100%;
-        }
+    /* App Layout (Removed global flex) */
+    /* .app-layout { display: flex; } */
 
-        .playlist-wrapper {
-            width: 100%;
-            max-width: 900px;
-        }
+    /* Sidebar Styles */
+    .app-sidebar {
+      width: 250px;
+      background: rgba(255, 255, 255, 0.95);
+      /* border: 1px solid rgba(0, 0, 0, 0.1); Removed border */
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 20px;
+    }
 
-        @media (max-width: 768px) {
-            .main-container {
-                grid-template-columns: 1fr;
-            }
-        }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1040;
+    }
 
-        .player-container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-        }
+    .sidebar-overlay.show {
+      display: block;
+    }
 
-        .video-player {
-            width: 100%;
-            aspect-ratio: 16 / 9;
-            height: auto;
-            max-height: 60vh;
-            background: #000;
-        }
+    .mobile-header {
+      display: none;
+      padding: 10px 15px;
+      background: #667eea;
+      color: white;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
 
-        .player-info {
-            padding: 20px;
-            background: #f8f9fa;
-        }
+    .mobile-header .btn {
+      color: #667eea;
+      background-color: white;
+      border: none;
+    }
 
-        .player-title {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 15px;
-            color: #333;
-        }
+    .sidebar-header {
+      padding: 15px 20px;
+      background: #667eea;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
+    }
 
-        .input-section {
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-        }
+    .sidebar-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      flex-grow: 1;
+    }
 
-        .url-input-group {
-            display: flex;
-            gap: 10px;
-        }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 15px 20px;
+      color: #333;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+    }
 
-        .playlist-section {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
-        }
+    .menu-item:hover {
+      background: #f0f7ff;
+      color: #667eea;
+    }
 
-        .playlist-header {
-            background: #667eea;
-            color: white;
-            padding: 15px 20px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
+    .menu-item.active {
+      background: #e0eaff;
+      color: #667eea;
+      font-weight: bold;
+    }
 
-        .mode-selector {
-            display: flex;
-            gap: 10px;
-        }
+    .menu-item i {
+      font-size: 20px;
+      width: 25px;
+      text-align: center;
+    }
 
-        .mode-btn {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s;
-        }
+    .sidebar-submenu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      background: rgba(0, 0, 0, 0.02);
+      overflow: hidden;
+      transition: max-height 0.3s ease-out;
+    }
 
-        .mode-btn.active {
-            background: white;
-            color: #667eea;
-        }
+    .sidebar-submenu .menu-item {
+      padding-left: 50px;
+      font-size: 0.95em;
+    }
 
-        .playlist-items {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            max-height: 400px;
-            overflow-y: auto;
-        }
+    .submenu-toggle-icon {
+      margin-left: auto;
+      font-size: 12px !important;
+      width: auto !important;
+      transition: transform 0.3s;
+    }
 
-        .playlist-item {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            transition: all 0.3s;
-            background: white;
-        }
+    .submenu-toggle-icon.rotated {
+      transform: rotate(180deg);
+    }
 
-        .playlist-item:hover {
-            background: #fafafa;
-        }
+    @media (max-width: 768px) {
+      .main-container {
+        grid-template-columns: 1fr;
+      }
 
-        .playlist-item.dragging {
-            opacity: 0.5;
-            background: #e9ecef;
-        }
+      .lower-content-row {
+        flex-direction: column;
+      }
 
-        .playlist-item.active {
-            background: #f0f7ff;
-        }
+      .app-sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        height: 100vh;
+        width: 280px;
+        z-index: 1050;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        border-radius: 0;
+        border: none;
+      }
 
-        .drag-handle {
-            color: #adb5bd;
-            cursor: grab;
-            font-size: 20px;
-        }
+      .app-sidebar.open {
+        left: 0;
+      }
 
-        .drag-handle:active {
-            cursor: grabbing;
-        }
+      .mobile-header {
+        display: flex;
+      }
 
-        .item-thumbnail {
-            width: 80px;
-            height: 60px;
-            background: #000;
-            border-radius: 5px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
+      body {
+        padding-top: 0;
+      }
 
-        .item-info {
-            flex: 1;
-            min-width: 0;
-        }
+      #app {
+        margin: 0;
+        max-width: 100%;
+      }
+    }
 
-        .item-title {
-            font-weight: 500;
-            color: #333;
-            margin-bottom: 5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+    .player-container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
 
-        .item-id {
-            font-size: 12px;
-            color: #666;
-        }
+    .video-player {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      height: auto;
+      max-height: 60vh;
+      background: #000;
+    }
 
-        .item-actions {
-            display: flex;
-            gap: 10px;
-        }
+    .player-info {
+      padding: 20px;
+      background: #f8f9fa;
+    }
 
-        .btn-small {
-            padding: 5px 10px;
-            font-size: 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
+    .player-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      color: #333;
+    }
 
-        .btn-play {
-            background: #667eea;
-            color: white;
-        }
+    /* Input Section Removed - Styles kept just in case or can be cleaned up later */
+    /* .input-section { ... } */
 
-        .btn-play:hover {
-            background: #5568d3;
-        }
+    .url-input-group {
+      display: flex;
+      gap: 10px;
+    }
 
-        .btn-delete {
-            background: #dc3545;
-            color: white;
-        }
+    .playlist-section {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+    }
 
-        .btn-delete:hover {
-            background: #c82333;
-        }
+    .playlist-header {
+      background: #667eea;
+      color: white;
+      padding: 15px 20px;
+      font-weight: bold;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        .empty-state {
-            padding: 40px 20px;
-            text-align: center;
-            color: #999;
-        }
+    .mode-selector {
+      display: flex;
+      gap: 10px;
+    }
 
-        .empty-state-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
+    .mode-btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.3);
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
 
-        .url-input-group {
-            display: flex;
-            gap: 10px;
-        }
+    .mode-btn.active {
+      background: white;
+      color: #667eea;
+    }
 
-        .url-input-group input {
-            flex: 1;
-        }
+    .playlist-items {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      /* max-height: 400px;
+            overflow-y: auto; Used to scroll */
+    }
 
-        .url-input-group button {
-            flex-shrink: 0;
-        }
+    .playlist-item {
+      padding: 15px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.3s;
+      background: white;
+    }
 
-        .alert-box {
-            margin-bottom: 15px;
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 500px;
-            z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            animation: slideDown 0.3s ease-out;
-        }
+    .playlist-item:hover {
+      background: #e9ecef;
+      /* Darker hover background */
+    }
 
-        @keyframes slideDown {
-            from {
-                transform: translateX(-50%) translateY(-30px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(-50%) translateY(0);
-                opacity: 1;
-            }
-        }
+    .playlist-item.dragging {
+      opacity: 0.5;
+      background: #e9ecef;
+    }
 
-        @media (max-width: 768px) {
-            .item-thumbnail {
-                width: 60px;
-                height: 45px;
-            }
+    .playlist-item.active {
+      background: #dbeafe;
+      /* More obvious active background */
+    }
 
-            .item-title {
-                font-size: 12px;
-            }
+    .playlist-item.active .item-title {
+      color: #667eea;
+      font-weight: bold;
+    }
 
-            .item-id {
-                font-size: 10px;
-            }
-        }
+    .drag-handle {
+      color: #adb5bd;
+      cursor: grab;
+      font-size: 20px;
+    }
 
-        [v-cloak] {
-            display: none;
-        }
-    </style>
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .item-thumbnail {
+      width: 80px;
+      height: 60px;
+      background: #000;
+      border-radius: 5px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      /* Add cursor pointer */
+    }
+
+    .item-info {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+      /* Add cursor pointer */
+    }
+
+    .item-title {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .item-id {
+      font-size: 12px;
+      color: #666;
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn-small {
+      padding: 5px 10px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .btn-play {
+      background: #667eea;
+      color: white;
+    }
+
+    .btn-play:hover {
+      background: #5568d3;
+    }
+
+    .btn-delete {
+      background: #dc3545;
+      color: white;
+    }
+
+    .btn-delete:hover {
+      background: #c82333;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .url-input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .url-input-group input {
+      flex: 1;
+    }
+
+    .url-input-group button {
+      flex-shrink: 0;
+    }
+
+    .alert-box {
+      margin-bottom: 15px;
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 500px;
+      z-index: 9999;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateX(-50%) translateY(-30px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+    }
+
+    [v-cloak] {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
-    <div id="app" v-cloak>
-        <!-- 提示框 -->
-        <div v-if="message.text" :class="['alert', 'alert-box', message.type === 'success' ? 'alert-success' : 'alert-danger']" role="alert">
-            {{ message.text }}
-        </div>
+  <div id="app" v-cloak>
+    <!-- 提示框 -->
+    <div v-if="message.text"
+      :class="['alert', 'alert-box', message.type === 'success' ? 'alert-success' : 'alert-danger']" role="alert">
+      {{ message.text }}
+    </div>
 
-        <div class="container">
-            <div class="main-container">
-                <!-- 影片播放器區塊 -->
-                <div class="player-wrapper">
-                    <div class="player-container">
-                        <div v-if="currentVideo" class="video-player" id="yt-player-container">
-                            <div id="yt-player"></div>
-                        </div>
-                        <div v-else class="video-player" style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
-                            <div style="text-align: center; color: #999;">
-                                <i v-if="playlist.length === 0" class="fas fa-list" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-                                <i v-else class="fas fa-play" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-                                <p v-if="playlist.length === 0">播放清單為空</p>
-                                <p v-else>請選擇播放清單中的影片</p>
-                                <p style="font-size: 12px;" v-if="playlist.length === 0">請在下方新增 YouTube 影片開始</p>
-                            </div>
-                        </div>
-                        <div class="player-info">
-                            <div class="player-title">
-                                {{ currentVideo ? currentVideo.title : '未選擇影片' }}
-                            </div>
-                            <div style="font-size: 14px; color: #666;">
-                                {{ currentVideo ? `影片 ID: ${currentVideo.id}` : '播放清單中沒有影片' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    <div class="container">
+      <!-- Mobile Overlay -->
+      <div class="sidebar-overlay" :class="{ show: isSidebarOpen }" @click="toggleSidebar"></div>
 
-                <!-- 新增影片區塊 -->
-                <div class="sidebar">
-                    <div class="input-section">
-                        <h4 class="mb-3">新增 YouTube 影片</h4>
-                        <div class="url-input-group">
-                            <input 
-                                v-model="newUrl" 
-                                type="text" 
-                                class="form-control" 
-                                placeholder="輸入 YouTube URL (如: https://www.youtube.com/watch?v=dQw4w9WgXcQ)"
-                                @keyup.enter="addVideo"
-                            >
-                            <button class="btn btn-primary" @click="addVideo">
-                                <i class="fas fa-plus"></i> 新增
-                            </button>
-                        </div>
-                    </div>
-                </div>
+      <!-- Mobile Header -->
+      <div class="mobile-header">
+        <button class="btn btn-light" @click="toggleSidebar">
+          <i class="fas fa-bars"></i>
+        </button>
+        <h5 class="m-0">YT Player</h5>
+      </div>
 
-                <!-- 播放列表區塊 -->
-                <div class="playlist-wrapper">
-                    <div class="playlist-section">
-                        <div class="playlist-header">
-                            <span>播放清單 ({{ playlist.length }})</span>
-                            <div class="mode-selector">
-                                <button 
-                                    class="mode-btn" 
-                                    :class="{ active: playMode === 'single' }"
-                                    @click="playMode = 'single'"
-                                    title="單曲循環"
-                                >
-                                    <i class="fas fa-redo"></i> 單曲
-                                </button>
-                                <button 
-                                    class="mode-btn" 
-                                    :class="{ active: playMode === 'loop' }"
-                                    @click="playMode = 'loop'"
-                                    title="重複循環"
-                                >
-                                    <i class="fas fa-sync"></i> 循環
-                                </button>
-                                <button 
-                                    class="mode-btn" 
-                                    :class="{ active: playMode === 'random' }"
-                                    @click="playMode = 'random'"
-                                    title="隨機播放"
-                                >
-                                    <i class="fas fa-random"></i> 隨機
-                                </button>
-                            </div>
-                        </div>
-                        <ul 
-                            class="playlist-items"
-                            @dragover="dragOverIndex = null"
-                        >
-                            <li v-if="playlist.length === 0" class="empty-state">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-list"></i>
-                                </div>
-                                <p>播放清單為空</p>
-                                <p style="font-size: 12px;">請新增 YouTube 影片開始</p>
-                            </li>
-                            <li 
-                                v-for="(item, index) in playlist" 
-                                :key="item.id"
-                                class="playlist-item"
-                                :class="{ 
-                                    'active': currentVideo && currentVideo.id === item.id,
-                                    'dragging': draggedIndex === index
-                                }"
-                                draggable="true"
-                                @dragstart="handleDragStart(index)"
-                                @dragend="handleDragEnd"
-                                @dragover.prevent="handleDragOver(index)"
-                                @drop.prevent="handleDrop(index)"
-                            >
-                                <div class="drag-handle">
-                                    <i class="fas fa-grip-vertical"></i>
-                                </div>
-                                <div class="item-thumbnail">
-                                    <img :src="getThumbnailUrl(item.id)" :alt="item.title" style="width: 100%; height: 100%; object-fit: cover; border-radius: 5px;">
-                                </div>
-                                <div class="item-info">
-                                    <div class="item-title">{{ item.title }}</div>
-                                    <div class="item-id">{{ item.id }}</div>
-                                </div>
-                                <div class="item-actions">
-                                    <button 
-                                        class="btn-small btn-play" 
-                                        @click="playVideo(index)"
-                                    >
-                                        <i class="fas fa-play"></i> 播放
-                                    </button>
-                                    <button 
-                                        class="btn-small btn-delete" 
-                                        @click="deleteVideo(index)"
-                                    >
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
+      <!-- Add Video Modal -->
+      <div class="modal fade" id="addVideoModal" tabindex="-1" aria-hidden="true" ref="addVideoModal">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">新增 YouTube 影片</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="videoUrlInput" class="form-label">YouTube 網址</label>
+                <input type="text" class="form-control" id="videoUrlInput" v-model="newUrl"
+                  placeholder="https://www.youtube.com/watch?v=..." @keyup.enter="addVideo">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+              <button type="button" class="btn btn-primary" @click="addVideo">新增</button>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <!-- Add To Playlist Modal -->
+      <div class="modal fade" id="addToPlaylistModal" tabindex="-1" aria-hidden="true" ref="addToPlaylistModal">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-bottom-0 pb-0">
+              <h5 class="modal-title fw-bold">加入播放清單</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-2">
+              <p class="text-muted small mb-3">選擇要加入的清單</p>
+
+              <!-- Add to Now Playing -->
+              <div class="d-grid mb-3">
+                <button class="btn btn-primary rounded-pill py-2" @click="addToNowPlayingFromModal">
+                  <i class="fas fa-play me-2"></i> 加入正在播放
+                </button>
+              </div>
+
+              <div class="d-flex align-items-center mb-2 mt-4">
+                <hr class="flex-grow-1 my-0">
+                <span class="px-2 text-muted small">自訂清單</span>
+                <hr class="flex-grow-1 my-0">
+              </div>
+
+              <!-- Custom Playlists List -->
+              <div class="list-group list-group-flush mb-3" v-if="customPlaylists.length > 0">
+                <div v-for="(pl, index) in customPlaylists" :key="index"
+                  class="list-group-item list-group-item-action border-0 rounded-3 mb-1 d-flex justify-content-between align-items-center bg-light">
+                  <span style="cursor: pointer; flex-grow: 1; font-weight: 500;" @click="addToCustomPlaylist(index)">
+                    <i class="fas fa-list me-2 text-primary"></i> {{ pl.name }}
+                    <span class="badge bg-secondary rounded-pill ms-2">{{ pl.items.length }}</span>
+                  </span>
+                  <button class="btn btn-sm btn-outline-danger rounded-circle"
+                    style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                    @click.stop="deleteCustomPlaylist(index)" title="刪除清單">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div v-else class="text-center text-muted mb-4 py-3 bg-light rounded-3">
+                <small>尚無自訂播放清單</small>
+              </div>
+
+              <!-- Create New Playlist -->
+              <div class="input-group">
+                <input type="text" class="form-control rounded-pill rounded-end-0 bg-light border-0 ps-3 me-2"
+                  v-model="newPlaylistName" placeholder="輸入新清單名稱..." @keyup.enter="createCustomPlaylist">
+                <button class="btn btn-success rounded-pill rounded-start-0 px-4" type="button"
+                  @click="createCustomPlaylist">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-container">
+        <!-- 影片播放器區塊 -->
+        <div class="player-wrapper">
+          <div class="player-container">
+            <div v-if="currentVideo" class="video-player" id="yt-player-container">
+              <div id="yt-player"></div>
+            </div>
+            <div v-else class="video-player"
+              style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
+              <div style="text-align: center; color: #999;">
+                <i v-if="playlist.length === 0" class="fas fa-list"
+                  style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                <i v-else class="fas fa-play" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                <p v-if="playlist.length === 0">播放清單為空</p>
+                <p v-else>請選擇播放清單中的影片</p>
+                <p style="font-size: 12px;" v-if="playlist.length === 0">請在下方新增 YouTube 影片開始</p>
+              </div>
+            </div>
+            <div class="player-info">
+              <div class="player-title">
+                {{ currentVideo ? currentVideo.title : '未選擇影片' }}
+              </div>
+              <div style="font-size: 14px; color: #666;">
+                {{ currentVideo ? `影片 ID: ${currentVideo.id}` : '播放清單中沒有影片' }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 新增影片區塊 Removed -->
+        <!-- <div class="input-area">...</div> -->
+
+        <!-- Split View: Sidebar + Playlist -->
+        <div class="lower-content-row">
+          <!-- Sidebar -->
+          <aside class="app-sidebar" :class="{ open: isSidebarOpen }">
+            <div class="sidebar-header">
+              <i class="fab fa-youtube"></i>
+              <span>YT Player</span>
+            </div>
+            <ul class="sidebar-menu">
+              <li class="menu-item" @click="openAddModal">
+                <i class="fas fa-plus-circle" style="color: #667eea;"></i>
+                <span>新增影片</span>
+              </li>
+              <li class="menu-item" :class="{ active: currentView === 'now-playing' }" @click="setView('now-playing')">
+                <i class="fas fa-play-circle"></i>
+                <span>正在撥放</span>
+              </li>
+              <li class="menu-item" :class="{ active: currentView === 'library' }" @click="setView('library')">
+                <i class="fas fa-list-ul"></i>
+                <span>媒體庫</span>
+              </li>
+
+              <!-- Playlists Group -->
+              <li class="menu-item" @click="togglePlaylistsSubmenu">
+                <i class="fas fa-folder"></i>
+                <span>播放清單</span>
+                <i class="fas fa-chevron-down submenu-toggle-icon" :class="{ rotated: isPlaylistsSubmenuOpen }"></i>
+              </li>
+
+              <!-- Submenu -->
+              <ul class="sidebar-submenu" v-if="isPlaylistsSubmenuOpen">
+                <li v-for="(pl, index) in customPlaylists" :key="index" class="menu-item"
+                  :class="{ active: currentView === 'custom-playlist' && currentPlaylistIndex === index }"
+                  @click="setView('custom-playlist', index)">
+                  <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ pl.name }}</span>
+                </li>
+                <li v-if="customPlaylists.length === 0" class="menu-item" style="color: #999; cursor: default;">
+                  <span style="font-size: 12px; padding-left: 5px;">(無自訂清單)</span>
+                </li>
+              </ul>
+            </ul>
+          </aside>
+
+          <!-- 播放列表區塊 -->
+          <div class="playlist-wrapper">
+            <div class="playlist-section">
+              <div class="playlist-header">
+                <span>{{ playlistTitle }} ({{ displayList.length }})</span>
+                <div class="mode-selector" v-if="currentView === 'now-playing'">
+                  <button class="mode-btn" :class="{ active: playMode === 'single' }" @click="playMode = 'single'"
+                    title="單曲循環">
+                    <i class="fas fa-redo"></i> 單曲
+                  </button>
+                  <button class="mode-btn" :class="{ active: playMode === 'loop' }" @click="playMode = 'loop'"
+                    title="重複循環">
+                    <i class="fas fa-sync"></i> 循環
+                  </button>
+                  <button class="mode-btn" :class="{ active: playMode === 'random' }" @click="playMode = 'random'"
+                    title="隨機播放">
+                    <i class="fas fa-random"></i> 隨機
+                  </button>
+                </div>
+              </div>
+              <ul class="playlist-items" @dragover="dragOverIndex = null">
+                <li v-if="displayList.length === 0" class="empty-state">
+                  <div class="empty-state-icon">
+                    <i class="fas fa-list"></i>
+                  </div>
+                  <p>{{ getEmptyStateMessage() }}</p>
+                  <p style="font-size: 12px;">{{ getEmptyStateSubMessage() }}</p>
+                </li>
+                <li v-for="(item, index) in displayList" :key="item.id" class="playlist-item" :class="{
+                      'active': currentView === 'now-playing' && currentVideo && currentVideo.id === item.id,
+                      'dragging': draggedIndex === index
+                    }" draggable="true" @dragstart="handleDragStart(index)" @dragend="handleDragEnd"
+                  @dragover.prevent="handleDragOver(index)" @drop.prevent="handleDrop(index)">
+                  <div class="drag-handle">
+                    <i class="fas fa-grip-vertical"></i>
+                  </div>
+                  <div class="item-thumbnail" @click="playVideo(index)">
+                    <img :src="getThumbnailUrl(item.id)" :alt="item.title"
+                      style="width: 100%; height: 100%; object-fit: cover; border-radius: 5px;">
+                  </div>
+                  <div class="item-info" @click="playVideo(index)">
+                    <div class="item-title">{{ item.title }}</div>
+                    <div class="item-id">{{ item.id }}</div>
+                  </div>
+                  <div class="item-actions">
+                    <!-- Add Button in Library OR Custom Playlist View -->
+                    <button v-if="currentView === 'library' || currentView === 'custom-playlist'"
+                      class="btn-small btn-primary" @click.stop="openAddToModal(item)" title="加入...">
+                      <i class="fas fa-plus"></i>
+                    </button>
+                    <!-- Delete button -->
+                    <button class="btn-small btn-delete" @click.stop="deleteVideo(index)">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Vue.js 3 -->
@@ -465,305 +702,526 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
-        const { createApp } = Vue;
+      const { createApp } = Vue;
 
-        let youtubePlayer = null;
+      let youtubePlayer = null;
+      let addVideoModal = null; /* Bootstrap Modal Instance */
+      let addToPlaylistModal = null; /* Add To Playlist Modal Instance */
 
-        const app = createApp({
-            data() {
-                return {
-                    playlist: [],
-                    currentIndex: -1,
-                    newUrl: '',
-                    playMode: 'loop', // 'single', 'loop', 'random'
-                    draggedIndex: null,
-                    dragOverIndex: null,
-                    message: {
-                        text: '',
-                        type: 'success'
-                    }
-                };
-            },
-            computed: {
-                currentVideo() {
-                    return this.currentIndex >= 0 && this.currentIndex < this.playlist.length 
-                        ? this.playlist[this.currentIndex] 
-                        : null;
-                }
-            },
-            watch: {
-                currentVideo(newVal) {
-                    if (newVal) {
-                        // 如果播放器已初始化，加载并播放视频
-                        if (youtubePlayer) {
-                            youtubePlayer.loadVideoById(newVal.id);
-                            youtubePlayer.playVideo();
-                        } else {
-                            // 如果播放器未初始化，初始化它
-                            this.$nextTick(() => {
-                                if (window.YT && window.YT.Player) {
-                                    initYoutubePlayer();
-                                }
-                            });
-                        }
-                    }
-                },
-                playlist: {
-                    handler(newVal) {
-                        this.savePlaylist();
-                    },
-                    deep: true
-                }
-            },
-            mounted() {
-                window.youtubeApp = this;
-                this.loadPlaylist();
-            },
-            methods: {
-                extractVideoId(url) {
-                    // 支持多种 YouTube URL 格式
-                    const patterns = [
-                        /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
-                        /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/,
-                        /^([a-zA-Z0-9_-]{11})$/ // 直接输入 video ID
-                    ];
-
-                    for (let pattern of patterns) {
-                        const match = url.match(pattern);
-                        if (match) {
-                            return match[1];
-                        }
-                    }
-                    return null;
-                },
-                getVideoTitle(videoId) {
-                    // 从 video ID 生成标题（实际应用可通过 API 获取真实标题）
-                    return `YouTube 影片 - ${videoId}`;
-                },
-                async fetchVideoTitle(videoId) {
-                    try {
-                        const response = await fetch(
-                            `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
-                        );
-                        if (response.ok) {
-                            const data = await response.json();
-                            return data.title;
-                        }
-                    } catch (error) {
-                        console.error('取得影片標題失敗:', error);
-                    }
-                    return this.getVideoTitle(videoId);
-                },
-                getThumbnailUrl(videoId) {
-                    // 返回 YouTube 视频缩图 URL
-                    return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
-                },
-                addVideo() {
-                    if (!this.newUrl.trim()) {
-                        this.showMessage('請輸入 YouTube URL', 'danger');
-                        return;
-                    }
-
-                    const videoId = this.extractVideoId(this.newUrl.trim());
-                    
-                    if (!videoId) {
-                        this.showMessage('無效的 YouTube URL 格式', 'danger');
-                        return;
-                    }
-
-                    // 检查是否已存在
-                    if (this.playlist.some(v => v.id === videoId)) {
-                        this.showMessage('該影片已在播放清單中', 'danger');
-                        return;
-                    }
-
-                    // 使用默认标题创建视频对象，然后异步获取真实标题
-                    const video = {
-                        id: videoId,
-                        title: this.getVideoTitle(videoId),
-                        addedAt: new Date().toLocaleString('zh-TW')
-                    };
-
-                    this.playlist.push(video);
-                    this.newUrl = '';
-                    this.showMessage('影片已新增至播放清單', 'success');
-                    
-                    // 异步获取真实标题
-                    this.fetchVideoTitle(videoId).then(title => {
-                        // 找到該影片並更新標題
-                        const videoItem = this.playlist.find(v => v.id === videoId);
-                        if (videoItem) {
-                            videoItem.title = title;
-                        }
-                    });
-                    
-                    // 如果是第一个视频，自动设置为当前播放视频
-                    if (this.playlist.length === 1) {
-                        this.currentIndex = 0;
-                    }
-                },
-                playVideo(index) {
-                    if (index >= 0 && index < this.playlist.length) {
-                        this.currentIndex = index;
-                    }
-                },
-                playNext() {
-                    if (this.playlist.length === 0) return;
-
-                    if (this.playMode === 'single') {
-                        // 单曲循环：重新播放当前视频
-                        if (youtubePlayer) {
-                            youtubePlayer.playVideo();
-                        }
-                    } else if (this.playMode === 'loop') {
-                        // 重复循环：播放下一个，到末尾时循环到开头
-                        if (this.currentIndex < this.playlist.length - 1) {
-                            this.currentIndex++;
-                        } else {
-                            this.currentIndex = 0;
-                        }
-                    } else if (this.playMode === 'random') {
-                        // 随机播放：随机选择一个
-                        this.currentIndex = Math.floor(Math.random() * this.playlist.length);
-                    }
-                },
-                deleteVideo(index) {
-                    if (index >= 0 && index < this.playlist.length) {
-                        this.playlist.splice(index, 1);
-                        
-                        // 调整当前索引
-                        if (this.currentIndex >= this.playlist.length) {
-                            this.currentIndex = this.playlist.length - 1;
-                        }
-                        
-                        this.showMessage('影片已刪除', 'success');
-                    }
-                },
-                handleDragStart(index) {
-                    this.draggedIndex = index;
-                },
-                handleDragEnd() {
-                    this.draggedIndex = null;
-                    this.dragOverIndex = null;
-                },
-                handleDragOver(index) {
-                    if (this.draggedIndex !== null && this.draggedIndex !== index) {
-                        this.dragOverIndex = index;
-                    }
-                },
-                handleDrop(index) {
-                    if (this.draggedIndex !== null && this.draggedIndex !== index) {
-                        const draggedItem = this.playlist[this.draggedIndex];
-                        const items = [...this.playlist];
-                        items.splice(this.draggedIndex, 1);
-                        items.splice(index, 0, draggedItem);
-                        this.playlist = items;
-                        
-                        // 更新当前索引
-                        if (this.currentIndex === this.draggedIndex) {
-                            this.currentIndex = index;
-                        } else if (this.draggedIndex < this.currentIndex && index >= this.currentIndex) {
-                            this.currentIndex--;
-                        } else if (this.draggedIndex > this.currentIndex && index <= this.currentIndex) {
-                            this.currentIndex++;
-                        }
-                    }
-                    this.draggedIndex = null;
-                    this.dragOverIndex = null;
-                },
-                showMessage(text, type) {
-                    this.message = { text, type };
-                    setTimeout(() => {
-                        this.message = { text: '', type: 'success' };
-                    }, 3000);
-                },
-                savePlaylist() {
-                    try {
-                        const data = {
-                            playlist: this.playlist,
-                            playMode: this.playMode,
-                            currentIndex: this.currentIndex,
-                            savedAt: new Date().toISOString()
-                        };
-                        localStorage.setItem('youtubePlaylist', JSON.stringify(data));
-                    } catch (error) {
-                        console.error('保存播放清單失敗:', error);
-                    }
-                },
-                loadPlaylist() {
-                    try {
-                        const saved = localStorage.getItem('youtubePlaylist');
-                        if (saved) {
-                            const data = JSON.parse(saved);
-                            this.playlist = data.playlist || [];
-                            this.playMode = data.playMode || 'loop';
-                            // 不恢复 currentIndex，保持页面加载时影片区块为空白
-                            this.currentIndex = -1;
-                        }
-                    } catch (error) {
-                        console.error('載入播放清單失敗:', error);
-                        this.playlist = [];
-                        this.currentIndex = -1;
-                    }
-                }
+      const app = createApp({
+        data() {
+          return {
+            isSidebarOpen: false,
+            currentView: 'library', /* 'now-playing', 'library', 'custom-playlist' */
+            playlist: [], /* This is now the 'Now Playing' list */
+            library: [], /* This is the storage list */
+            customPlaylists: [], /* Array of { name: '...', items: [] } */
+            currentIndex: -1,
+            currentPlaylistIndex: -1, /* Index of currently viewed custom playlist */
+            isPlaylistsSubmenuOpen: true, /* Default open state for submenu */
+            newUrl: '',
+            newPlaylistName: '', /* For creating new playlist in modal */
+            selectedVideoForAdd: null, /* Video being added */
+            playMode: 'loop', // 'single', 'loop', 'random'
+            draggedIndex: null,
+            dragOverIndex: null,
+            message: {
+              text: '',
+              type: 'success'
             }
-        }).mount('#app');
+          };
+        },
+        computed: {
+          currentVideo() {
+            return this.currentIndex >= 0 && this.currentIndex < this.playlist.length
+              ? this.playlist[this.currentIndex]
+              : null;
+          },
+          playlistTitle() {
+            if (this.currentView === 'now-playing') {
+              return '正在播放';
+            } else if (this.currentView === 'library') {
+              return '媒體庫';
+            } else if (this.currentView === 'custom-playlist') {
+              if (this.currentPlaylistIndex >= 0 && this.currentPlaylistIndex < this.customPlaylists.length) {
+                return this.customPlaylists[this.currentPlaylistIndex].name;
+              }
+              return '自訂清單';
+            }
+            return '播放清單';
+          },
+          displayList() {
+            if (this.currentView === 'library') {
+              return this.library;
+            } else if (this.currentView === 'custom-playlist') {
+              if (this.currentPlaylistIndex >= 0 && this.currentPlaylistIndex < this.customPlaylists.length) {
+                return this.customPlaylists[this.currentPlaylistIndex].items;
+              }
+              return [];
+            }
+            return this.playlist;
+          }
+        },
+        watch: {
+          currentVideo(newVal) {
+            if (newVal) {
+              // 如果播放器已初始化，加载并播放视频
+              if (youtubePlayer) {
+                youtubePlayer.loadVideoById(newVal.id);
+                youtubePlayer.playVideo();
+              } else {
+                // 如果播放器未初始化，初始化它
+                this.$nextTick(() => {
+                  if (window.YT && window.YT.Player) {
+                    initYoutubePlayer();
+                  }
+                });
+              }
+            }
+          },
+          playlist: {
+            handler(newVal) {
+              this.savePlaylist();
+            },
+            deep: true
+          },
+          library: {
+            handler(newVal) {
+              this.savePlaylist();
+            },
+            deep: true
+          },
+          customPlaylists: {
+            handler(newVal) {
+              this.savePlaylist();
+            },
+            deep: true
+          }
+        },
+        mounted() {
+          window.youtubeApp = this;
+          this.loadPlaylist();
+          // Initialize Bootstrap Modals
+          addVideoModal = new bootstrap.Modal(document.getElementById('addVideoModal'), {
+            keyboard: false // Optional: adjust options
+          });
+          addToPlaylistModal = new bootstrap.Modal(document.getElementById('addToPlaylistModal'), {
+            keyboard: false
+          });
+        },
+        methods: {
+          extractVideoId(url) {
+            // 支持多种 YouTube URL 格式
+            const patterns = [
+              /(?:https?:\/\/)?(?:www\.)?youtube\.com\/watch\?v=([^&]+)/,
+              /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([^?]+)/,
+              /^([a-zA-Z0-9_-]{11})$/ // 直接输入 video ID
+            ];
 
-        // YouTube IFrame API 回调函数
-        function onYouTubeIframeAPIReady() {
-            console.log('YouTube API 已加载');
-            initYoutubePlayer();
-        }
+            for (let pattern of patterns) {
+              const match = url.match(pattern);
+              if (match) {
+                return match[1];
+              }
+            }
+            return null;
+          },
+          getVideoTitle(videoId) {
+            // 从 video ID 生成标题（实际应用可通过 API 获取真实标题）
+            return `YouTube 影片 - ${videoId}`;
+          },
+          async fetchVideoTitle(videoId) {
+            try {
+              const response = await fetch(
+                `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
+              );
+              if (response.ok) {
+                const data = await response.json();
+                return data.title;
+              }
+            } catch (error) {
+              console.error('取得影片標題失敗:', error);
+            }
+            return this.getVideoTitle(videoId);
+          },
+          getThumbnailUrl(videoId) {
+            // 返回 YouTube 视频缩图 URL
+            return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+          },
+          addVideo() {
+            if (!this.newUrl.trim()) {
+              this.showMessage('請輸入 YouTube URL', 'danger');
+              return;
+            }
 
-        function initYoutubePlayer() {
-            const playerContainer = document.getElementById('yt-player');
-            if (!playerContainer || youtubePlayer) return;
+            const videoId = this.extractVideoId(this.newUrl.trim());
 
-            console.log('初始化 YouTube 播放器');
-            youtubePlayer = new YT.Player('yt-player', {
-                height: '100%',
-                width: '100%',
-                videoId: '', // 不设置默认视频
-                events: {
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange
-                },
-                playerVars: {
-                    controls: 1,
-                    modestbranding: 1,
-                    autoplay: 0,
-                    fs: 1
-                }
+            if (!videoId) {
+              this.showMessage('無效的 YouTube URL 格式', 'danger');
+              return;
+            }
+
+            const video = {
+              id: videoId,
+              title: this.getVideoTitle(videoId),
+              addedAt: new Date().toLocaleString('zh-TW')
+            };
+
+            // Add to Library
+            if (this.library.some(v => v.id === videoId)) {
+              this.showMessage('該影片已在媒體庫中', 'warning'); // Changed to warning, allow adding to queue? No, unique in lib
+              return;
+            }
+
+            this.library.push(video);
+            this.newUrl = '';
+            this.showMessage('影片已新增至媒體庫', 'success');
+
+            // Switch to library view to see it
+            if (this.currentView !== 'library') {
+              this.setView('library');
+            }
+
+            // Close Modal
+            if (addVideoModal) {
+              addVideoModal.hide();
+            }
+
+            // 异步获取真实标题
+            this.fetchVideoTitle(videoId).then(title => {
+              // 找到該影片並更新標題 (In Library)
+              const videoItem = this.library.find(v => v.id === videoId);
+              if (videoItem) {
+                videoItem.title = title;
+                // Also update in playlist if exists? (Optional, assume sync not needed for now if independent copies)
+              }
             });
-            window.youtubePlayer = youtubePlayer;
-        }
-
-        function onPlayerReady(event) {
-            console.log('播放器已准备就绪');
-            // 如果有选中的视频，加载它
-            if (window.youtubeApp && window.youtubeApp.currentVideo) {
-                console.log('載入影片:', window.youtubeApp.currentVideo.id);
-                youtubePlayer.loadVideoById(window.youtubeApp.currentVideo.id);
-                // 延迟播放，确保视频已加载
-                setTimeout(() => {
-                    youtubePlayer.playVideo();
-                }, 500);
+          },
+          openAddModal() {
+            if (addVideoModal) {
+              addVideoModal.show();
             }
-        }
+            if (window.innerWidth <= 768) {
+              this.isSidebarOpen = false;
+            }
+          },
+          playVideo(index) {
+            if (this.currentView === 'library' || this.currentView === 'custom-playlist') {
+              // Play from Library or Custom Playlist: Add to Playlist (Now Playing) and Play
 
-        function onPlayerStateChange(event) {
-            console.log('播放器状态变化:', event.data);
-            // 0 = 已结束
-            // 1 = 正在播放
-            // 2 = 暂停
-            // 3 = 缓冲
-            // 5 = 已开始视频
-            if (event.data === YT.PlayerState.ENDED) {
-                if (window.youtubeApp) {
-                    window.youtubeApp.playNext();
+              let video = null;
+              if (this.currentView === 'library') video = this.library[index];
+              else if (this.currentView === 'custom-playlist') {
+                if (this.currentPlaylistIndex >= 0 && this.currentPlaylistIndex < this.customPlaylists.length) {
+                  video = this.customPlaylists[this.currentPlaylistIndex].items[index];
                 }
+              }
+
+              if (video) {
+                // Check for duplicates
+                const existingIndex = this.playlist.findIndex(v => v.id === video.id);
+                if (existingIndex >= 0) {
+                  // Already in playlist, just play it
+                  this.currentIndex = existingIndex;
+                  this.setView('now-playing');
+                  this.showMessage('此影片已在播放清單中', 'success');
+                } else {
+                  // Add new video
+                  this.playlist.push({ ...video });
+                  this.currentIndex = this.playlist.length - 1;
+                  this.setView('now-playing');
+                }
+              }
+            } else {
+              // 'now-playing' view
+              if (index >= 0 && index < this.playlist.length) {
+                this.currentIndex = index;
+              }
             }
+          },
+          playNext() {
+            if (this.playlist.length === 0) return;
+
+            if (this.playMode === 'single') {
+              // 单曲循环：重新播放当前视频
+              if (youtubePlayer) {
+                youtubePlayer.playVideo();
+              }
+            } else if (this.playMode === 'loop') {
+              // 重复循环：播放下一个，到末尾时循环到开头
+              if (this.currentIndex < this.playlist.length - 1) {
+                this.currentIndex++;
+              } else {
+                this.currentIndex = 0;
+              }
+            } else if (this.playMode === 'random') {
+              // 随机播放：随机选择一个
+              this.currentIndex = Math.floor(Math.random() * this.playlist.length);
+            }
+          },
+          deleteVideo(index) {
+            if (this.currentView === 'library') {
+              this.library.splice(index, 1);
+              this.showMessage('影片已從媒體庫刪除', 'success');
+            } else if (this.currentView === 'custom-playlist') {
+              if (this.currentPlaylistIndex >= 0 && this.currentPlaylistIndex < this.customPlaylists.length) {
+                this.customPlaylists[this.currentPlaylistIndex].items.splice(index, 1);
+                this.showMessage('影片已從清單移除', 'success');
+              }
+            } else {
+              // Delete from Now Playing
+              if (index >= 0 && index < this.playlist.length) {
+                this.playlist.splice(index, 1);
+                // 调整当前索引
+                if (this.currentIndex >= this.playlist.length) {
+                  this.currentIndex = this.playlist.length - 1;
+                }
+                this.showMessage('影片已從播放清單移除', 'success');
+              }
+            }
+          },
+          handleDragStart(index) {
+            this.draggedIndex = index;
+          },
+          handleDragEnd() {
+            this.draggedIndex = null;
+            this.dragOverIndex = null;
+          },
+          handleDragOver(index) {
+            if (this.draggedIndex !== null && this.draggedIndex !== index) {
+              this.dragOverIndex = index;
+            }
+          },
+          handleDrop(index) {
+            if (this.draggedIndex !== null && this.draggedIndex !== index) {
+              let list = null;
+              if (this.currentView === 'library') list = this.library;
+              else if (this.currentView === 'now-playing') list = this.playlist;
+              else if (this.currentView === 'custom-playlist') {
+                if (this.currentPlaylistIndex >= 0 && this.currentPlaylistIndex < this.customPlaylists.length) {
+                  list = this.customPlaylists[this.currentPlaylistIndex].items;
+                }
+              }
+
+              if (!list) return;
+
+              // const drags = list[this.draggedIndex]; // Reuse logic?
+              // The original logic updated this.playlist/this.library directly.
+              // We need to support updating the nested array.
+
+              const draggedItem = list[this.draggedIndex];
+              const items = [...list];
+              items.splice(this.draggedIndex, 1);
+              items.splice(index, 0, draggedItem);
+
+              if (this.currentView === 'library') {
+                this.library = items;
+              } else if (this.currentView === 'now-playing') {
+                this.playlist = items;
+                // Update index logic...
+                if (this.currentIndex === this.draggedIndex) {
+                  this.currentIndex = index;
+                } else if (this.draggedIndex < this.currentIndex && index >= this.currentIndex) {
+                  this.currentIndex--;
+                } else if (this.draggedIndex > this.currentIndex && index <= this.currentIndex) {
+                  this.currentIndex++;
+                }
+              } else if (this.currentView === 'custom-playlist') {
+                this.customPlaylists[this.currentPlaylistIndex].items = items;
+              }
+            }
+            this.draggedIndex = null;
+            this.dragOverIndex = null;
+          },
+          setView(view, index = -1) {
+            this.currentView = view;
+            if (view === 'custom-playlist') {
+              this.currentPlaylistIndex = index;
+            }
+            if (window.innerWidth <= 768) {
+              this.isSidebarOpen = false;
+            }
+          },
+          togglePlaylistsSubmenu() {
+            this.isPlaylistsSubmenuOpen = !this.isPlaylistsSubmenuOpen;
+          },
+          getEmptyStateMessage() {
+            if (this.currentView === 'library') return '媒體庫為空';
+            if (this.currentView === 'custom-playlist') return '此清單為空';
+            return '正在播放清單為空';
+          },
+          getEmptyStateSubMessage() {
+            if (this.currentView === 'library') return '請新增 YouTube 影片開始';
+            if (this.currentView === 'custom-playlist') return '請點擊下方「新增影片」或從媒體庫加入';
+            return '請從媒體庫或播放清單播放影片';
+          },
+          showMessage(text, type) {
+            this.message = { text, type };
+            setTimeout(() => {
+              this.message = { text: '', type: 'success' };
+            }, 3000);
+          },
+          openAddToModal(video) {
+            this.selectedVideoForAdd = video;
+            this.newPlaylistName = ''; // Reset input
+            if (addToPlaylistModal) {
+              addToPlaylistModal.show();
+            }
+          },
+          addToNowPlayingFromModal() {
+            if (this.selectedVideoForAdd) {
+              // Check for duplicates
+              if (this.playlist.some(v => v.id === this.selectedVideoForAdd.id)) {
+                this.showMessage('此影片已在播放清單中', 'success');
+                if (addToPlaylistModal) addToPlaylistModal.hide();
+                return;
+              }
+
+              this.playlist.push({ ...this.selectedVideoForAdd });
+              this.showMessage('已加入正在播放', 'success');
+              if (addToPlaylistModal) addToPlaylistModal.hide();
+
+              // If empty, start playing? User didn't specify, but nice to have.
+              if (this.playlist.length === 1 && this.currentView === 'now-playing') {
+                this.currentIndex = 0;
+              }
+            }
+          },
+          createCustomPlaylist() {
+            if (!this.newPlaylistName.trim()) return;
+
+            this.customPlaylists.push({
+              name: this.newPlaylistName.trim(),
+              items: []
+            });
+            this.newPlaylistName = '';
+          },
+          deleteCustomPlaylist(index) {
+            if (confirm('確定要刪除此播放清單嗎？')) {
+              this.customPlaylists.splice(index, 1);
+            }
+          },
+          addToCustomPlaylist(index) {
+            if (this.selectedVideoForAdd && index >= 0 && index < this.customPlaylists.length) {
+              const pl = this.customPlaylists[index];
+              // Check duplicates? Or allow? Assuming allow for now or warn.
+              if (pl.items.some(v => v.id === this.selectedVideoForAdd.id)) {
+                this.showMessage(`影片已在清單「${pl.name}」中`, 'warning');
+                return; // Or continue?
+              }
+
+              pl.items.push({ ...this.selectedVideoForAdd });
+              this.showMessage(`已加入清單「${pl.name}」`, 'success');
+              if (addToPlaylistModal) addToPlaylistModal.hide();
+            }
+          },
+          savePlaylist() {
+            try {
+              const data = {
+                playlist: this.playlist,
+                library: this.library,
+                customPlaylists: this.customPlaylists,
+                playMode: this.playMode,
+                currentIndex: this.currentIndex,
+                savedAt: new Date().toISOString()
+              };
+              localStorage.setItem('yt-player-data', JSON.stringify(data));
+            } catch (e) {
+              console.error('儲存播放清單失敗:', e);
+            }
+          },
+          loadPlaylist() {
+            try {
+              const saved = localStorage.getItem('yt-player-data');
+              if (saved) {
+                const data = JSON.parse(saved);
+
+                // Migrate old data (if no library, but has playlist, move to library)
+                if (!data.library && data.playlist && data.playlist.length > 0) {
+                  this.library = data.playlist;
+                  this.playlist = [];
+                } else {
+                  this.library = data.library || [];
+                  this.playlist = data.playlist || []; // Now restore playlist
+                }
+
+                this.customPlaylists = data.customPlaylists || [];
+                this.playMode = data.playMode || 'loop';
+
+                // Set view and index based on playlist content
+                if (this.playlist.length > 0) {
+                  this.currentView = 'now-playing';
+                  this.currentIndex = data.currentIndex >= 0 && data.currentIndex < this.playlist.length
+                    ? data.currentIndex
+                    : 0; // Start from saved index or first video
+                } else {
+                  this.currentView = 'library';
+                  this.currentIndex = -1;
+                }
+              }
+            } catch (e) {
+              console.error('讀取播放清單失敗:', e);
+            }
+          }
         }
+      }).mount('#app');
+
+      // YouTube IFrame API 回调函数
+      function onYouTubeIframeAPIReady() {
+        console.log('YouTube API 已加载');
+        initYoutubePlayer();
+      }
+
+      function initYoutubePlayer() {
+        const playerContainer = document.getElementById('yt-player');
+        if (!playerContainer || youtubePlayer) return;
+
+        console.log('初始化 YouTube 播放器');
+        youtubePlayer = new YT.Player('yt-player', {
+          height: '100%',
+          width: '100%',
+          videoId: '', // 不设置默认视频
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          },
+          playerVars: {
+            controls: 1,
+            modestbranding: 1,
+            autoplay: 0,
+            fs: 1
+          }
+        });
+        window.youtubePlayer = youtubePlayer;
+      }
+
+      function onPlayerReady(event) {
+        console.log('播放器已准备就绪');
+        // 如果有选中的视频，加载它
+        if (window.youtubeApp && window.youtubeApp.currentVideo) {
+          console.log('載入影片:', window.youtubeApp.currentVideo.id);
+          youtubePlayer.loadVideoById(window.youtubeApp.currentVideo.id);
+          // 延迟播放，确保视频已加载
+          setTimeout(() => {
+            youtubePlayer.playVideo();
+          }, 500);
+        }
+      }
+
+      function onPlayerStateChange(event) {
+        console.log('播放器状态变化:', event.data);
+        // 0 = 已结束
+        // 1 = 正在播放
+        // 2 = 暂停
+        // 3 = 缓冲
+        // 5 = 已开始视频
+        if (event.data === YT.PlayerState.ENDED) {
+          if (window.youtubeApp) {
+            window.youtubeApp.playNext();
+          }
+        }
+      }
     </script>
 </body>
+
 </html>
