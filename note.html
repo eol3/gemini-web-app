@@ -1183,7 +1183,7 @@
                 currentNewNoteVideos.forEach((vid, idx) => {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'image-thumbnail relative';
-                    wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-cover"></video>`;
+                    wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-contain bg-black"></video>`;
                     const removeBtn = document.createElement('div');
                     removeBtn.className = 'remove-img-btn'; removeBtn.innerHTML = '✕';
                     removeBtn.onclick = () => { currentNewNoteVideos.splice(idx, 1); renderNewNoteVideosPreview(); };
@@ -1232,8 +1232,8 @@
             if (videos && videos.length > 0) {
                 videosHtml = `<div class="flex space-x-3 overflow-x-auto custom-scrollbar mb-3 note-video-display py-1 pb-3">`;
                 videos.forEach((vid) => {
-                    videosHtml += `<div class="flex-shrink-0 w-48 h-32 rounded-lg overflow-hidden border border-gray-300 shadow-sm group relative">
-                        <video src="${vid}" controls class="w-full h-full object-cover"></video>
+                    videosHtml += `<div class="flex-shrink-0 w-48 h-32 rounded-lg overflow-hidden border border-gray-300 shadow-sm group relative bg-black">
+                        <video src="${vid}" controls class="w-full h-full object-contain"></video>
                     </div>`;
                 });
                 videosHtml += `</div>`;
@@ -1376,7 +1376,7 @@
                     currentEditVideos.forEach((vid, idx) => {
                         const wrapper = document.createElement('div');
                         wrapper.className = 'image-thumbnail relative';
-                        wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-cover"></video>`;
+                        wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-contain bg-black"></video>`;
                         const removeBtn = document.createElement('div');
                         removeBtn.className = 'remove-img-btn'; removeBtn.innerHTML = '✕';
                         removeBtn.onclick = () => { currentEditVideos.splice(idx, 1); renderEditVideoPreview(); };
@@ -1663,10 +1663,29 @@
 
                     zip.file("notes.json", JSON.stringify(notesExport, null, 2));
                     zip.generateAsync({ type: "blob" }).then(content => {
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(content);
-                        a.download = filenameBase;
-                        a.click();
+                        // iOS Safari 下載相容性處理
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                        if (isIOS) {
+                            const reader = new FileReader();
+                            reader.onload = function (e) {
+                                const link = document.createElement('a');
+                                link.href = e.target.result;
+                                link.download = filenameBase;
+                                link.target = '_blank'; // iOS 需要嘗試開啟新視窗
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                            };
+                            reader.readAsDataURL(content);
+                        } else {
+                            const a = document.createElement('a');
+                            a.href = URL.createObjectURL(content);
+                            a.download = filenameBase;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            setTimeout(() => URL.revokeObjectURL(a.href), 100);
+                        }
                     });
                 };
             }
