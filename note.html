@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,41 +12,119 @@
     <!-- 載入 JSZip 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
-        .editable-field { white-space: pre-wrap; word-wrap: break-word; }
-        .image-preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.5rem; }
-        .image-thumbnail { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 0.5rem; border: 1px solid #e2e8f0; }
-        .image-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
-        .remove-img-btn { position: absolute; top: 2px; right: 2px; background: rgba(0, 0, 0, 0.5); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; transition: background 0.2s; }
-        .remove-img-btn:hover { background: rgba(220, 38, 38, 0.9); }
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        .custom-scrollbar { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
-        .lightbox-img { max-width: 90vw; max-height: 90vh; object-fit: contain; transition: transform 0.3s ease; }
-        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fb;
+        }
+
+        .editable-field {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .image-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .image-thumbnail {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border-radius: 0.5rem;
+            border: 1px solid #e2e8f0;
+        }
+
+        .image-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .remove-img-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .remove-img-btn:hover {
+            background: rgba(220, 38, 38, 0.9);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f1f5f9;
+        }
+
+        .lightbox-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+
         /* 手動定義 tag-badge 樣式 */
         .tag-badge {
-            background-color: #dbeafe; /* bg-blue-100 */
-            color: #1e40af; /* text-blue-800 */
-            font-size: 0.75rem; /* text-xs */
-            font-weight: 500; /* font-medium */
-            margin-right: 0.5rem; /* me-2 */
-            padding: 0.125rem 0.625rem; /* py-0.5 px-2.5 */
-            border-radius: 0.25rem; /* rounded */
+            background-color: #dbeafe;
+            /* bg-blue-100 */
+            color: #1e40af;
+            /* text-blue-800 */
+            font-size: 0.75rem;
+            /* text-xs */
+            font-weight: 500;
+            /* font-medium */
+            margin-right: 0.5rem;
+            /* me-2 */
+            padding: 0.125rem 0.625rem;
+            /* py-0.5 px-2.5 */
+            border-radius: 0.25rem;
+            /* rounded */
             display: inline-block;
         }
-        
+
         /* 已移除導致衝突的 .hidden { display: none !important; } */
     </style>
 </head>
+
 <body class="min-h-screen">
     <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-6">
             <h1 class="text-4xl font-extrabold text-indigo-700">本地檔案式記事本</h1>
-            <p id="storage-type-info" class="text-sm text-gray-500 mt-2 p-2 bg-white inline-block rounded-full shadow-inner">資料儲存在瀏覽器 IndexedDB 中。</p>
-            <p id="note-count-status" class="text-sm text-gray-500 mt-1 p-1 bg-white inline-block rounded-full shadow-inner">正在檢查儲存狀態...</p>
+            <p id="storage-type-info"
+                class="text-sm text-gray-500 mt-2 p-2 bg-white inline-block rounded-full shadow-inner">資料儲存在瀏覽器
+                IndexedDB 中。</p>
+            <p id="note-count-status"
+                class="text-sm text-gray-500 mt-1 p-1 bg-white inline-block rounded-full shadow-inner">正在檢查儲存狀態...</p>
         </header>
 
         <div class="bg-white p-4 rounded-xl shadow-lg mb-6 border border-gray-100">
@@ -54,62 +133,105 @@
                 <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
                     <div class="flex gap-2">
                         <!-- 漢堡按鈕 -->
-                        <button id="mobile-menu-btn" class="sm:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                        <button id="mobile-menu-btn"
+                            class="sm:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg focus:outline-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                        <button id="toggle-form-btn" class="w-full sm:w-auto py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg><span>新增記事</span>
+                        <button id="toggle-form-btn"
+                            class="w-full sm:w-auto py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4" />
+                            </svg><span>新增記事</span>
                         </button>
                     </div>
                 </div>
 
                 <!-- 選單區 -->
-                <div id="toolbar-menu" class="hidden sm:flex flex-col sm:flex-row w-full sm:w-auto gap-6 items-stretch sm:items-center mt-6 sm:mt-0">
+                <div id="toolbar-menu"
+                    class="hidden sm:flex flex-col sm:flex-row w-full sm:w-auto gap-6 items-stretch sm:items-center mt-6 sm:mt-0">
                     <div class="relative w-full sm:w-auto">
-                        <select id="storage-selector" class="w-full py-2 pl-3 pr-8 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
+                        <select id="storage-selector"
+                            class="w-full py-2 pl-3 pr-8 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer">
                             <option value="idb">儲存位置：瀏覽器 (IndexedDB)</option>
                             <option value="fs_manage">⚙️ 管理儲存資料夾...</option>
                         </select>
                     </div>
-                    
-                    <button id="reconnect-btn" class="hidden w-full sm:w-auto py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+
+                    <button id="reconnect-btn"
+                        class="hidden w-full sm:w-auto py-2 px-4 bg-blue-500 text-white font-semibold rounded-lg shadow-md hover:bg-blue-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
                         <!-- SVG icon set in JS -->
                     </button>
 
-                    <button id="set-folder-btn" class="hidden w-full sm:w-auto py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                    <button id="set-folder-btn"
+                        class="hidden w-full sm:w-auto py-2 px-4 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
                         <span>設定儲存資料夾</span>
                     </button>
 
-                    <button id="export-btn" class="w-full sm:w-auto py-2 px-4 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 11.586V3a1 1 0 112 0v8.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg><span>匯出 (.zip)</span>
+                    <button id="export-btn"
+                        class="w-full sm:w-auto py-2 px-4 bg-green-500 text-white font-semibold rounded-lg shadow-md hover:bg-green-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 11.586V3a1 1 0 112 0v8.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                                clip-rule="evenodd" />
+                        </svg><span>匯出 (.zip)</span>
                     </button>
-                    <button id="import-btn" class="w-full sm:w-auto py-2 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 8.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 6.414V14a1 1 0 11-2 0V6.414L7.707 8.707a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg><span>匯入 (.zip)</span>
+                    <button id="import-btn"
+                        class="w-full sm:w-auto py-2 px-4 bg-yellow-500 text-white font-semibold rounded-lg shadow-md hover:bg-yellow-600 transition duration-150 transform hover:scale-[1.01] flex items-center justify-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd"
+                                d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 8.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 6.414V14a1 1 0 11-2 0V6.414L7.707 8.707a1 1 0 01-1.414 0z"
+                                clip-rule="evenodd" />
+                        </svg><span>匯入 (.zip)</span>
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="note-form-container" class="relative bg-white p-6 rounded-2xl shadow-xl mb-8 border border-gray-100 hidden">
-            <button id="close-form-btn" class="absolute top-3 right-3 p-2 text-gray-400 hover:text-gray-600 rounded-full transition duration-150" aria-label="關閉表單"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg></button>
+        <div id="note-form-container"
+            class="relative bg-white p-6 rounded-2xl shadow-xl mb-8 border border-gray-100 hidden">
+            <button id="close-form-btn"
+                class="absolute top-3 right-3 p-2 text-gray-400 hover:text-gray-600 rounded-full transition duration-150"
+                aria-label="關閉表單"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg></button>
             <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">新增筆記內容</h2>
             <form id="note-form">
-                <input type="text" id="note-title" placeholder="請輸入標題" required class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800">
-                <textarea id="note-content" placeholder="請輸入筆記內容..." rows="4" required class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800 resize-y"></textarea>
-                
+                <input type="text" id="note-title" placeholder="請輸入標題" required
+                    class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800">
+                <textarea id="note-content" placeholder="請輸入筆記內容..." rows="4" required
+                    class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800 resize-y"></textarea>
+
                 <label class="block mb-2 text-sm font-medium text-gray-600">附加圖片 (可多選)</label>
-                <input type="file" id="image-input" accept="image/*" class="w-full p-2 mb-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 text-sm">
+                <input type="file" id="image-input" accept="image/*"
+                    class="w-full p-2 mb-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 text-sm">
                 <div id="image-preview" class="mb-3"></div>
-                <button type="button" id="remove-image-btn" class="hidden text-red-500 hover:text-red-700 text-sm font-semibold p-1 rounded-md transition duration-150 mb-4">移除圖片</button>
-                
+                <button type="button" id="remove-image-btn"
+                    class="hidden text-red-500 hover:text-red-700 text-sm font-semibold p-1 rounded-md transition duration-150 mb-4">移除圖片</button>
+
+                <label class="block mb-2 text-sm font-medium text-gray-600">附加影片 (可多選)</label>
+                <input type="file" id="video-input" accept="video/*"
+                    class="w-full p-2 mb-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-gray-800 text-sm">
+                <div id="video-preview" class="mb-3"></div>
+
                 <!-- 標籤輸入欄位移到這裡 -->
                 <label class="block mb-2 text-sm font-medium text-gray-600">標籤</label>
-                <input type="text" id="note-tags" placeholder="輸入標籤 (使用逗號分隔，例如: 工作, 重要)" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800 text-sm">
+                <input type="text" id="note-tags" placeholder="輸入標籤 (使用逗號分隔，例如: 工作, 重要)"
+                    class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 text-gray-800 text-sm">
 
-                <button type="submit" class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span>儲存記事</span>
+                <button type="submit"
+                    class="w-full py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 transition duration-200 transform hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg><span>儲存記事</span>
                 </button>
             </form>
         </div>
@@ -120,14 +242,17 @@
                 <h2 class="text-2xl font-semibold text-gray-700">記事列表</h2>
                 <div class="flex items-center space-x-2">
                     <div class="relative">
-                        <select id="tag-filter" class="p-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm cursor-pointer w-auto max-w-[120px] sm:max-w-none">
+                        <select id="tag-filter"
+                            class="p-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm cursor-pointer w-auto max-w-[120px] sm:max-w-none">
                             <option value="">所有標籤</option>
                         </select>
                     </div>
                     <div class="hidden sm:flex items-center">
-                        <label for="sort-select" class="text-sm text-gray-500 font-medium mr-2 whitespace-nowrap">排序：</label>
+                        <label for="sort-select"
+                            class="text-sm text-gray-500 font-medium mr-2 whitespace-nowrap">排序：</label>
                     </div>
-                    <select id="sort-select" class="p-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm cursor-pointer w-auto">
+                    <select id="sort-select"
+                        class="p-2 border border-gray-300 rounded-lg text-gray-700 text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white shadow-sm cursor-pointer w-auto">
                         <option value="updated_desc">更新 (新→舊)</option>
                         <option value="updated_asc">更新 (舊→新)</option>
                         <option value="created_desc">建立 (新→舊)</option>
@@ -135,51 +260,83 @@
                     </select>
                 </div>
             </div>
-            <div id="note-list" class="space-y-4"><p class="text-gray-500 text-center p-4">正在載入筆記...</p></div>
+            <div id="note-list" class="space-y-4">
+                <p class="text-gray-500 text-center p-4">正在載入筆記...</p>
+            </div>
         </div>
     </div>
 
-    <div id="lightbox-modal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4" aria-modal="true" role="dialog">
-        <div class="absolute inset-0" onclick="window.closeLightbox()"></div> 
-        <button class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-300 z-50" onclick="window.closeLightbox()">&times;</button>
-        <button id="lightbox-prev-btn" class="absolute top-1/2 -translate-y-1/2 left-12 z-50 p-4 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden md:block" onclick="event.stopPropagation(); window.navigateLightbox(-1);"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-        <img id="lightbox-image" src="" alt="Full Screen Image" class="lightbox-img rounded-lg shadow-2xl relative z-40" onclick="event.stopPropagation()">
-        <button id="lightbox-next-btn" class="absolute top-1/2 -translate-y-1/2 right-12 z-50 p-4 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden md:block" onclick="event.stopPropagation(); window.navigateLightbox(1);"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>
+    <div id="lightbox-modal"
+        class="hidden fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4" aria-modal="true"
+        role="dialog">
+        <div class="absolute inset-0" onclick="window.closeLightbox()"></div>
+        <button class="absolute top-4 right-4 text-white text-4xl font-bold hover:text-gray-300 z-50"
+            onclick="window.closeLightbox()">&times;</button>
+        <button id="lightbox-prev-btn"
+            class="absolute top-1/2 -translate-y-1/2 left-12 z-50 p-4 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden md:block"
+            onclick="event.stopPropagation(); window.navigateLightbox(-1);"><svg xmlns="http://www.w3.org/2000/svg"
+                class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg></button>
+        <img id="lightbox-image" src="" alt="Full Screen Image" class="lightbox-img rounded-lg shadow-2xl relative z-40"
+            onclick="event.stopPropagation()">
+        <button id="lightbox-next-btn"
+            class="absolute top-1/2 -translate-y-1/2 right-12 z-50 p-4 rounded-full bg-white bg-opacity-20 text-white hover:bg-opacity-40 transition hidden md:block"
+            onclick="event.stopPropagation(); window.navigateLightbox(1);"><svg xmlns="http://www.w3.org/2000/svg"
+                class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg></button>
     </div>
 
     <!-- 資料夾管理 Modal -->
-    <div id="folder-manage-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform scale-100 transition-transform duration-300 relative">
+    <div id="folder-manage-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+        <div
+            class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 transform scale-100 transition-transform duration-300 relative">
             <button id="modal-manage-close-x" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
             <h3 class="text-xl font-bold text-gray-800 mb-4">管理儲存資料夾</h3>
-            
+
             <!-- 資料夾列表 -->
             <div id="folder-list" class="max-h-60 overflow-y-auto mb-4 custom-scrollbar">
                 <!-- 動態生成列表 -->
             </div>
 
             <div class="flex flex-col space-y-3">
-                <button id="manage-add-btn" class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center justify-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                <button id="manage-add-btn"
+                    class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150 flex items-center justify-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
                     <span>新增資料夾</span>
                 </button>
-                <button id="manage-close-btn" class="w-full py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">
+                <button id="manage-close-btn"
+                    class="w-full py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">
                     關閉
                 </button>
             </div>
         </div>
     </div>
 
-    <div id="custom-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-transform duration-300">
+    <div id="custom-modal"
+        class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+        <div
+            class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 transform scale-100 transition-transform duration-300">
             <h3 id="modal-title" class="text-xl font-bold text-gray-800 mb-3">訊息</h3>
             <p id="modal-message" class="text-gray-600 mb-6"></p>
             <div class="flex justify-end space-x-3">
-                <button id="modal-ok-btn" class="hidden py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">確定</button>
-                <button id="modal-cancel-btn" class="hidden py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">取消</button>
-                <button id="modal-confirm-btn" class="hidden py-2 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150">確認刪除</button>
+                <button id="modal-ok-btn"
+                    class="hidden py-2 px-4 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">確定</button>
+                <button id="modal-cancel-btn"
+                    class="hidden py-2 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition duration-150">取消</button>
+                <button id="modal-confirm-btn"
+                    class="hidden py-2 px-4 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition duration-150">確認刪除</button>
             </div>
         </div>
     </div>
@@ -189,29 +346,30 @@
         // --- 全域變數與狀態 ---
         const DB_NAME = 'LocalNoteDB';
         const STORE_NAME = 'notes';
-        const SETTINGS_STORE = 'settings'; 
-        const FOLDERS_STORE = 'folders'; 
-        const DB_VERSION = 3; 
-        
-        let isEditing = false; 
-        let currentNewNoteImages = []; 
-        
+        const SETTINGS_STORE = 'settings';
+        const FOLDERS_STORE = 'folders';
+        const DB_VERSION = 3;
+
+        let isEditing = false;
+        let currentNewNoteImages = [];
+        let currentNewNoteVideos = [];
+
         // 檔案系統模式變數
         let directoryHandle = null;
-        let isFileSystemMode = false; 
-        let currentFolderId = null; 
+        let isFileSystemMode = false;
+        let currentFolderId = null;
 
         let noteFormContainer, toggleFormBtn, closeFormBtn, sortSelect, tagFilterSelect, noteCountStatus, storageTypeInfo;
-        let storageSelect; 
+        let storageSelect;
         let reconnectBtn;
-        let setFolderBtn; 
-        
+        let setFolderBtn;
+
         // --- Lightbox 狀態 ---
         let currentLightboxNoteId = null;
         let currentLightboxImages = [];
         let currentLightboxIndex = -1;
         let touchStartX = 0;
-        const SWIPE_THRESHOLD = 50; 
+        const SWIPE_THRESHOLD = 50;
 
         // --- 輔助函式 ---
         const fileToDataURL = (file) => {
@@ -233,7 +391,7 @@
             for (let i = 0; i < rawLength; ++i) uInt8Array[i] = raw.charCodeAt(i);
             return new Blob([uInt8Array], { type: contentType });
         };
-        
+
         const getMimeTypeFromFilename = (filename) => {
             const ext = filename.split('.').pop().toLowerCase();
             switch (ext) {
@@ -241,18 +399,22 @@
                 case 'jpg': case 'jpeg': return 'image/jpeg';
                 case 'gif': return 'image/gif';
                 case 'webp': return 'image/webp';
+                case 'mp4': return 'video/mp4';
+                case 'webm': return 'video/webm';
+                case 'ogg': return 'video/ogg';
+                case 'mov': return 'video/quicktime';
                 default: return 'image/png';
             }
         };
 
         const formatDate = (timestamp) => {
             if (!timestamp) return '未知時間';
-            return new Date(timestamp).toLocaleString('zh-TW', { 
-                year: 'numeric', month: 'numeric', day: 'numeric', 
-                hour: '2-digit', minute: '2-digit' 
+            return new Date(timestamp).toLocaleString('zh-TW', {
+                year: 'numeric', month: 'numeric', day: 'numeric',
+                hour: '2-digit', minute: '2-digit'
             });
         };
-        
+
         const getBackupFilename = () => {
             const now = new Date();
             const year = now.getFullYear();
@@ -331,11 +493,11 @@
                                 tx.onerror = reject;
                             });
                         }
-                        return folder.id; 
+                        return folder.id;
                     }
                 } catch (err) { console.warn("Handle 檢查失敗", err); }
             }
-            const folderId = Date.now().toString(); 
+            const folderId = Date.now().toString();
             const folderData = { id: folderId, name: handle.name, handle: handle };
             await new Promise((resolve, reject) => {
                 const tx = db.transaction([FOLDERS_STORE], 'readwrite');
@@ -366,7 +528,7 @@
                 req.onerror = reject;
             });
         };
-        
+
         const getNotesIDB = async () => {
             const db = await openNoteDB();
             const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -379,12 +541,12 @@
         };
 
         const getNoteByIdIDB = async (noteId) => {
-             const db = await openNoteDB();
-             return new Promise((resolve, reject) => {
+            const db = await openNoteDB();
+            return new Promise((resolve, reject) => {
                 const request = db.transaction([STORE_NAME], 'readonly').objectStore(STORE_NAME).get(noteId);
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = (e) => reject(e.target.error);
-             });
+            });
         };
 
         // --- File System Access API 函式 ---
@@ -409,10 +571,10 @@
                 directoryHandle = handle;
                 isFileSystemMode = true;
                 currentFolderId = folderId;
-                
-                await saveSetting('activeMode', folderId); 
+
+                await saveSetting('activeMode', folderId);
                 await loadNotes();
-                
+
                 closeManageModal();
                 showModal('設定成功', `已切換至本機資料夾：「${handle.name}」。`);
             } catch (e) {
@@ -440,7 +602,7 @@
 
         const initStorage = async () => {
             try {
-                const activeMode = await getSetting('activeMode') || 'idb'; 
+                const activeMode = await getSetting('activeMode') || 'idb';
                 await refreshStorageSelectUI(activeMode);
 
                 if (activeMode !== 'idb') {
@@ -449,9 +611,9 @@
                         directoryHandle = handle;
                         isFileSystemMode = true;
                         currentFolderId = activeMode;
-                        
+
                         const hasPermission = await handle.queryPermission({ mode: 'readwrite' }) === 'granted';
-                        
+
                         if (hasPermission) {
                             await loadNotes();
                         } else {
@@ -485,8 +647,8 @@
 
         const refreshStorageSelectUI = async (activeId) => {
             const select = document.getElementById('storage-selector');
-            if (!select) return; 
-            select.innerHTML = ''; 
+            if (!select) return;
+            select.innerHTML = '';
 
             // 選項 1: 瀏覽器儲存
             const optIdb = document.createElement('option');
@@ -499,7 +661,7 @@
             if (folders.length > 0) {
                 const group = document.createElement('optgroup');
                 group.label = "已儲存的資料夾";
-                
+
                 folders.forEach(folder => {
                     const opt = document.createElement('option');
                     opt.value = folder.id;
@@ -524,20 +686,20 @@
                 select.value = activeId;
                 const folder = folders.find(f => f.id === activeId);
                 const name = folder ? folder.name : '未知資料夾';
-                
+
                 if (reconnectBtn && reconnectBtn.classList.contains('hidden')) {
-                     updateStatusText(`目前使用：${name}`, "text-green-700", "bg-green-100");
+                    updateStatusText(`目前使用：${name}`, "text-green-700", "bg-green-100");
                 }
             }
-            
+
             updateSetFolderButton();
         };
-        
+
         const updateStatusText = (text, textColor, bgColor) => {
-             if (storageTypeInfo) {
+            if (storageTypeInfo) {
                 storageTypeInfo.textContent = text;
                 storageTypeInfo.className = `text-sm ${textColor} mt-2 p-2 ${bgColor} inline-block rounded-full shadow-inner font-bold`;
-             }
+            }
         };
 
         const updateSetFolderButton = () => {
@@ -553,7 +715,7 @@
 
         const handleSetFolderClick = () => {
             if (isFileSystemMode) {
-                location.reload(); 
+                location.reload();
             } else {
                 setLocalFolder();
             }
@@ -563,7 +725,7 @@
         const openManageModal = async () => {
             const modal = document.getElementById('folder-manage-modal');
             const listContainer = document.getElementById('folder-list');
-            if (listContainer) listContainer.innerHTML = ''; 
+            if (listContainer) listContainer.innerHTML = '';
 
             const folders = await getSavedFolders();
             if (folders.length === 0) {
@@ -572,7 +734,7 @@
                 folders.forEach(folder => {
                     const item = document.createElement('div');
                     item.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200 mb-2';
-                    
+
                     const info = document.createElement('div');
                     info.className = 'flex items-center space-x-2 overflow-hidden';
                     info.innerHTML = `<span class="text-2xl">📁</span><span class="font-medium truncate" title="${folder.name}">${folder.name}</span>`;
@@ -603,15 +765,15 @@
         const handleDeleteFolder = async (id, name) => {
             showConfirmModal('刪除資料夾設定', `確定要移除資料夾「${name}」的設定嗎？\n(不會刪除硬碟上的檔案)`, async () => {
                 await removeFolderHandle(id);
-                
+
                 // 如果刪除的是當前使用的資料夾，強制切回 IDB
                 if (id === currentFolderId) {
                     showModal('注意', '您移除了當前正在使用的資料夾設定，系統將自動切換回瀏覽器儲存模式。');
                     await switchToIDB();
                 }
-                
+
                 // 重新渲染管理列表
-                openManageModal(); 
+                openManageModal();
                 // 背景更新 dropdown
                 refreshStorageSelectUI(isFileSystemMode ? currentFolderId : 'idb');
             }, '移除設定');
@@ -619,7 +781,7 @@
 
         const handleStorageChange = async (e) => {
             const value = e.target.value;
-            
+
             if (value === 'idb') {
                 await switchToIDB();
             } else if (value === 'fs_manage') {
@@ -628,14 +790,14 @@
             } else {
                 const folderId = value;
                 const handle = await getFolderHandleById(folderId);
-                
+
                 if (handle) {
                     directoryHandle = handle;
                     isFileSystemMode = true;
                     currentFolderId = folderId;
                     await saveSetting('activeMode', folderId);
                     updateStatusText(`目前使用：${handle.name}`, "text-green-700", "bg-green-100");
-                    
+
                     if (await verifyPermission(handle, true)) {
                         if (reconnectBtn) reconnectBtn.classList.add('hidden');
                         await loadNotes();
@@ -651,7 +813,7 @@
                     await switchToIDB();
                 }
             }
-            updateSetFolderButton(); 
+            updateSetFolderButton();
         };
 
         const checkSavedFolder = (handle, id) => {
@@ -674,14 +836,16 @@
             if (!directoryHandle) return [];
             try {
                 let fileHandle;
-                try { fileHandle = await directoryHandle.getFileHandle('notes.json', { create: false }); } 
+                try { fileHandle = await directoryHandle.getFileHandle('notes.json', { create: false }); }
                 catch (e) { return []; }
                 const file = await fileHandle.getFile();
                 const content = await file.text();
                 const notes = JSON.parse(content);
-                const imagesDir = await directoryHandle.getDirectoryHandle('images', { create: true }).catch(()=>null);
+                const imagesDir = await directoryHandle.getDirectoryHandle('images', { create: true }).catch(() => null);
+                const videosDir = await directoryHandle.getDirectoryHandle('videos', { create: true }).catch(() => null);
                 for (const note of notes) {
                     note.images = [];
+                    note.videos = [];
                     if (imagesDir && note.image_files && Array.isArray(note.image_files)) {
                         try {
                             const noteDir = await imagesDir.getDirectoryHandle(String(note.id), { create: false });
@@ -692,7 +856,19 @@
                                     note.images.push(base64);
                                 } catch (err) { console.warn(`無法讀取圖片 ${filename}`, err); }
                             }
-                        } catch (err) {}
+                        } catch (err) { }
+                    }
+                    if (videosDir && note.video_files && Array.isArray(note.video_files)) {
+                        try {
+                            const noteDir = await videosDir.getDirectoryHandle(String(note.id), { create: false });
+                            for (const filename of note.video_files) {
+                                try {
+                                    const vidHandle = await noteDir.getFileHandle(filename, { create: false });
+                                    const base64 = await fileToDataURL(await vidHandle.getFile());
+                                    note.videos.push(base64);
+                                } catch (err) { console.warn(`無法讀取影片 ${filename}`, err); }
+                            }
+                        } catch (err) { }
                     }
                 }
                 return notes;
@@ -701,10 +877,12 @@
 
         const saveNoteToFS = async (noteData) => {
             if (!directoryHandle) return;
-            let currentNotes = await getNotesFromFS(); 
+            let currentNotes = await getNotesFromFS();
             const existingIndex = currentNotes.findIndex(n => n.id === noteData.id);
             const imagesBase64 = noteData.images || [];
+            const videosBase64 = noteData.videos || [];
             const imageFilenames = [];
+            const videoFilenames = [];
             if (imagesBase64.length > 0) {
                 try {
                     const imagesDir = await directoryHandle.getDirectoryHandle('images', { create: true });
@@ -722,15 +900,34 @@
                     }
                 } catch (e) { showModal('錯誤', '寫入圖片檔案失敗'); return; }
             }
+            if (videosBase64.length > 0) {
+                try {
+                    const videosDir = await directoryHandle.getDirectoryHandle('videos', { create: true });
+                    const noteDir = await videosDir.getDirectoryHandle(String(noteData.id), { create: true });
+                    for (let i = 0; i < videosBase64.length; i++) {
+                        const base64 = videosBase64[i];
+                        const mimeTypeMatch = base64.match(/data:([^;]+);base64,/);
+                        const mime = mimeTypeMatch ? mimeTypeMatch[1] : 'video/mp4';
+                        let ext = mime.split('/')[1] || 'mp4';
+                        if (ext === 'quicktime') ext = 'mov';
+                        const filename = `video_${i}.${ext}`;
+                        const fileHandle = await noteDir.getFileHandle(filename, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(dataURLToBlob(base64));
+                        await writable.close();
+                        videoFilenames.push(filename);
+                    }
+                } catch (e) { showModal('錯誤', '寫入影片檔案失敗'); return; }
+            }
             const noteToSave = {
                 id: noteData.id, title: noteData.title, content: noteData.content,
                 created_at: noteData.created_at, updated_at: noteData.updated_at,
-                timestamp: noteData.timestamp, image_files: imageFilenames,
+                timestamp: noteData.timestamp, image_files: imageFilenames, video_files: videoFilenames,
                 tags: noteData.tags || [] // Save tags
             };
             if (existingIndex >= 0) currentNotes[existingIndex] = noteToSave;
             else currentNotes.push(noteToSave);
-            const notesForJson = currentNotes.map(n => { const { images, ...rest } = n; return rest; });
+            const notesForJson = currentNotes.map(n => { const { images, videos, ...rest } = n; return rest; });
             const fileHandle = await directoryHandle.getFileHandle('notes.json', { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(JSON.stringify(notesForJson, null, 2));
@@ -741,7 +938,7 @@
             if (!directoryHandle) return;
             let currentNotes = await getNotesFromFS();
             const newNotes = currentNotes.filter(n => n.id !== noteId);
-            const notesForJson = newNotes.map(n => { const { images, ...rest } = n; return rest; });
+            const notesForJson = newNotes.map(n => { const { images, videos, ...rest } = n; return rest; });
             const fileHandle = await directoryHandle.getFileHandle('notes.json', { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(JSON.stringify(notesForJson, null, 2));
@@ -749,9 +946,13 @@
             try {
                 const imagesDir = await directoryHandle.getDirectoryHandle('images', { create: false });
                 await imagesDir.removeEntry(String(noteId), { recursive: true });
-            } catch (e) {}
+            } catch (e) { }
+            try {
+                const videosDir = await directoryHandle.getDirectoryHandle('videos', { create: false });
+                await videosDir.removeEntry(String(noteId), { recursive: true });
+            } catch (e) { }
         };
-        
+
         const importFromZipToFS = async (zipFile) => {
             if (!directoryHandle) return;
             const zip = new JSZip();
@@ -760,7 +961,7 @@
                 const notesJsonFile = content.file('notes.json');
                 if (!notesJsonFile) throw new Error("ZIP 中找不到 notes.json");
                 const notesText = await notesJsonFile.async('text');
-                JSON.parse(notesText); 
+                JSON.parse(notesText);
                 const notesHandle = await directoryHandle.getFileHandle('notes.json', { create: true });
                 const writable = await notesHandle.createWritable();
                 await writable.write(notesText);
@@ -782,6 +983,21 @@
                                 await writableImg.write(blob);
                                 await writableImg.close();
                             } catch (err) { console.warn("解壓縮圖片失敗", relativePath, err); }
+                        })();
+                        promises.push(p);
+                    } else if (parts.length >= 3 && parts[0] === 'videos') {
+                        const noteId = parts[1];
+                        const filename = parts[parts.length - 1];
+                        const p = (async () => {
+                            try {
+                                const videosFolderHandle = await directoryHandle.getDirectoryHandle('videos', { create: true });
+                                const noteDirHandle = await videosFolderHandle.getDirectoryHandle(noteId, { create: true });
+                                const fileHandle = await noteDirHandle.getFileHandle(filename, { create: true });
+                                const blob = await zipEntry.async('blob');
+                                const writableVid = await fileHandle.createWritable();
+                                await writableVid.write(blob);
+                                await writableVid.close();
+                            } catch (err) { console.warn("解壓縮影片失敗", relativePath, err); }
                         })();
                         promises.push(p);
                     }
@@ -809,8 +1025,8 @@
                 tags = tagsInput.value.split(/[,，]/).map(t => t.trim()).filter(t => t.length > 0);
             }
 
-            const newNote = { 
-                title, content, created_at: now, updated_at: now, timestamp: now, images: currentNewNoteImages, tags: tags
+            const newNote = {
+                title, content, created_at: now, updated_at: now, timestamp: now, images: currentNewNoteImages, videos: currentNewNoteVideos, tags: tags
             };
             try {
                 if (isFileSystemMode) { newNote.id = now; await saveNoteToFS(newNote); }
@@ -824,20 +1040,21 @@
                 document.getElementById('note-title').value = '';
                 document.getElementById('note-content').value = '';
                 if (tagsInput) tagsInput.value = ''; // Clear tags input
-                resetNewNoteImages();
+                resetNewNoteMedia();
                 hideNoteForm();
             } catch (e) { showModal('錯誤', '新增筆記失敗：' + e); }
         };
 
-        const updateNote = async (noteId, newTitle, newContent, newImagesArray, newTags) => {
+        const updateNote = async (noteId, newTitle, newContent, newImagesArray, newVideosArray, newTags) => {
             try {
                 let noteData = await getNoteById(noteId);
                 if (!noteData) throw new Error("Note not found");
                 noteData.title = newTitle; noteData.content = newContent;
                 noteData.updated_at = Date.now(); noteData.timestamp = Date.now();
                 noteData.images = newImagesArray; delete noteData.image;
+                noteData.videos = newVideosArray;
                 noteData.tags = newTags || []; // Update tags
-                
+
                 if (isFileSystemMode) await saveNoteToFS(noteData);
                 else {
                     const db = await openNoteDB();
@@ -888,7 +1105,7 @@
             img.removeEventListener('touchend', handleTouchEnd);
             currentLightboxNoteId = null; currentLightboxImages = []; currentLightboxIndex = -1;
         };
-        
+
         window.updateLightboxImage = () => {
             if (currentLightboxIndex < 0 || currentLightboxIndex >= currentLightboxImages.length) return;
             const img = document.getElementById('lightbox-image');
@@ -911,11 +1128,11 @@
             else if (e.key === 'ArrowLeft') { e.preventDefault(); window.navigateLightbox(-1); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); window.navigateLightbox(1); }
         };
-        
+
         let isMoving = false;
-        const handleTouchStart = (e) => { if(currentLightboxImages.length<=1)return; touchStartX=e.touches[0].clientX; isMoving=false; };
-        const handleTouchMove = (e) => { if(currentLightboxImages.length<=1)return; if(Math.abs(e.touches[0].clientX-touchStartX)>10) { isMoving=true; e.preventDefault(); } };
-        const handleTouchEnd = (e) => { if(currentLightboxImages.length<=1)return; const delta=e.changedTouches[0].clientX-touchStartX; if(Math.abs(delta)>SWIPE_THRESHOLD && isMoving) window.navigateLightbox(delta>0?-1:1); isMoving=false; };
+        const handleTouchStart = (e) => { if (currentLightboxImages.length <= 1) return; touchStartX = e.touches[0].clientX; isMoving = false; };
+        const handleTouchMove = (e) => { if (currentLightboxImages.length <= 1) return; if (Math.abs(e.touches[0].clientX - touchStartX) > 10) { isMoving = true; e.preventDefault(); } };
+        const handleTouchEnd = (e) => { if (currentLightboxImages.length <= 1) return; const delta = e.changedTouches[0].clientX - touchStartX; if (Math.abs(delta) > SWIPE_THRESHOLD && isMoving) window.navigateLightbox(delta > 0 ? -1 : 1); isMoving = false; };
 
         // --- 介面相關函式 ---
         const hideNoteForm = () => {
@@ -938,7 +1155,7 @@
                 }
             }
         };
-        
+
         const renderNewNoteImagesPreview = () => {
             const previewContainer = document.getElementById('image-preview');
             if (previewContainer) {
@@ -957,17 +1174,39 @@
             }
         };
 
-        const resetNewNoteImages = () => {
+        const renderNewNoteVideosPreview = () => {
+            const previewContainer = document.getElementById('video-preview');
+            if (previewContainer) {
+                previewContainer.className = 'image-preview-grid mb-3';
+                previewContainer.innerHTML = '';
+                if (currentNewNoteVideos.length === 0) return;
+                currentNewNoteVideos.forEach((vid, idx) => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'image-thumbnail relative';
+                    wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-cover"></video>`;
+                    const removeBtn = document.createElement('div');
+                    removeBtn.className = 'remove-img-btn'; removeBtn.innerHTML = '✕';
+                    removeBtn.onclick = () => { currentNewNoteVideos.splice(idx, 1); renderNewNoteVideosPreview(); };
+                    wrapper.appendChild(removeBtn); previewContainer.appendChild(wrapper);
+                });
+            }
+        };
+
+        const resetNewNoteMedia = () => {
             currentNewNoteImages = [];
+            currentNewNoteVideos = [];
             renderNewNoteImagesPreview();
+            renderNewNoteVideosPreview();
             const imgInput = document.getElementById('image-input');
             if (imgInput) imgInput.value = '';
+            const videoInput = document.getElementById('video-input');
+            if (videoInput) videoInput.value = '';
         };
-        
-        const createNoteElement = ({ id, title, content, createdAt, updatedAt, images, tags }) => {
+
+        const createNoteElement = ({ id, title, content, createdAt, updatedAt, images, videos, tags }) => {
             const noteCard = document.createElement('div');
             noteCard.className = 'note-card bg-white p-4 rounded-xl shadow-lg hover:shadow-xl transition duration-300 border-l-4 border-indigo-500 mb-4';
-            noteCard.dataset.noteId = id; 
+            noteCard.dataset.noteId = id;
 
             let tagsHtml = '';
             if (tags && tags.length > 0) {
@@ -989,6 +1228,17 @@
                 imagesHtml += `</div>`;
             }
 
+            let videosHtml = '';
+            if (videos && videos.length > 0) {
+                videosHtml = `<div class="flex space-x-3 overflow-x-auto custom-scrollbar mb-3 note-video-display py-1 pb-3">`;
+                videos.forEach((vid) => {
+                    videosHtml += `<div class="flex-shrink-0 w-48 h-32 rounded-lg overflow-hidden border border-gray-300 shadow-sm group relative">
+                        <video src="${vid}" controls class="w-full h-full object-cover"></video>
+                    </div>`;
+                });
+                videosHtml += `</div>`;
+            }
+
             const createdStr = formatDate(createdAt);
             const updatedStr = formatDate(updatedAt);
             let dateHtml = `<div class="text-xs text-gray-400 border-t pt-2 mt-2 space-y-1">`;
@@ -1007,6 +1257,7 @@
                 ${tagsHtml}
                 <p class="text-gray-600 mb-3 whitespace-pre-wrap max-h-40 overflow-hidden" data-field="content">${content}</p>
                 ${imagesHtml}
+                ${videosHtml}
                 ${dateHtml}
             `;
 
@@ -1014,19 +1265,19 @@
                 img.addEventListener('click', (e) => { e.stopPropagation(); window.openLightbox(Number(id), Number(img.dataset.imageIndex)); });
             });
             noteCard.querySelector('.delete-btn').addEventListener('click', () => showConfirmModal('確認刪除', '您確定要刪除這條筆記嗎？', () => deleteNote(Number(id)), '確認刪除'));
-            
+
             const editButton = noteCard.querySelector('.edit-btn');
             editButton.addEventListener('click', async (e) => {
                 const targetBtn = e.currentTarget;
                 if (!isEditing) {
                     hideNoteForm();
-                    const noteData = await getNoteById(id); 
+                    const noteData = await getNoteById(id);
                     if (noteData) toggleEditMode(noteCard, true, targetBtn, noteData);
                 } else showModal('警告', '請先完成編輯。');
             });
             return noteCard;
         };
-        
+
         const cleanupEditUI = (card) => loadNotes();
 
         const toggleEditMode = (card, enable, originalEditButton, noteData) => {
@@ -1037,12 +1288,13 @@
             const deleteButton = card.querySelector('[data-action="delete"]');
 
             if (!titleDisplay || !contentDisplay || !actionsDiv || !deleteButton) { loadNotes(); return; }
-            
+
             const originalTitle = noteData.title.trim();
             const originalContent = noteData.content.trim();
             const originalTags = noteData.tags ? noteData.tags.join(', ') : '';
             let currentEditImages = noteData.images || [];
-            
+            let currentEditVideos = noteData.videos || [];
+
             if (enable) {
                 if (!originalEditButton) { loadNotes(); return; }
                 isEditing = true;
@@ -1050,12 +1302,14 @@
                 card.classList.remove('border-indigo-500', 'hover:shadow-xl');
                 originalEditButton.classList.add('hidden');
                 const existingImagesDiv = card.querySelector('.note-image-display');
-                if(existingImagesDiv) existingImagesDiv.classList.add('hidden');
+                if (existingImagesDiv) existingImagesDiv.classList.add('hidden');
+                const existingVideosDiv = card.querySelector('.note-video-display');
+                if (existingVideosDiv) existingVideosDiv.classList.add('hidden');
 
                 const titleInput = document.createElement('input');
                 titleInput.value = originalTitle;
                 titleInput.className = 'w-full h-10 text-xl font-bold border-2 border-purple-400 rounded-lg p-2 mb-2 focus:outline-none focus:ring-2 focus:ring-purple-600 editable-field';
-                
+
                 const tagsInput = document.createElement('input');
                 tagsInput.type = 'text';
                 tagsInput.value = originalTags;
@@ -1067,12 +1321,12 @@
                 contentTextarea.className = 'w-full text-gray-600 border-2 border-purple-400 rounded-lg p-2 mb-3 resize-y h-32 focus:outline-none focus:ring-2 focus:ring-purple-600 editable-field';
 
                 titleDisplay.before(titleInput); titleDisplay.remove();
-                
+
                 // Remove existing tags display in edit mode to avoid clutter, or just keep it. 
                 // Better to replace or insert input. Let's insert input after title.
                 const tagsDisplay = card.querySelector('.flex.flex-wrap.gap-1');
-                if(tagsDisplay) tagsDisplay.style.display = 'none';
-                
+                if (tagsDisplay) tagsDisplay.style.display = 'none';
+
                 titleInput.after(tagsInput);
 
                 contentDisplay.before(contentTextarea); contentDisplay.remove();
@@ -1086,8 +1340,8 @@
                 editImageInput.type = 'file'; editImageInput.accept = 'image/*'; editImageInput.multiple = true;
                 editImageInput.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
                 const editPreviewGrid = document.createElement('div');
-                editPreviewGrid.className = 'image-preview-grid mt-2'; 
-                
+                editPreviewGrid.className = 'image-preview-grid mt-2';
+
                 const renderEditPreview = () => {
                     editPreviewGrid.innerHTML = '';
                     if (currentEditImages.length === 0) return;
@@ -1103,9 +1357,39 @@
                 };
                 renderEditPreview();
                 imageEditContainer.append(label, editImageInput, editPreviewGrid);
-                card.insertBefore(imageEditContainer, card.querySelector('.text-xs'));
 
-                // Insert tags input AFTER image container (bottom of form logic)
+                // Video Management in Edit Mode
+                const videoEditContainer = document.createElement('div');
+                videoEditContainer.className = 'mt-4 border-t pt-4 space-y-2 edit-video-container editable-field';
+                const vidLabel = document.createElement('label');
+                vidLabel.className = 'block mb-2 text-sm font-medium text-gray-600';
+                vidLabel.textContent = '管理影片';
+                const editVideoInput = document.createElement('input');
+                editVideoInput.type = 'file'; editVideoInput.accept = 'video/*'; editVideoInput.multiple = true;
+                editVideoInput.className = 'w-full p-2 border border-gray-300 rounded-lg text-sm';
+                const editVideoPreviewGrid = document.createElement('div');
+                editVideoPreviewGrid.className = 'image-preview-grid mt-2';
+
+                const renderEditVideoPreview = () => {
+                    editVideoPreviewGrid.innerHTML = '';
+                    if (currentEditVideos.length === 0) return;
+                    currentEditVideos.forEach((vid, idx) => {
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'image-thumbnail relative';
+                        wrapper.innerHTML = `<video src="${vid}" controls class="w-full h-full object-cover"></video>`;
+                        const removeBtn = document.createElement('div');
+                        removeBtn.className = 'remove-img-btn'; removeBtn.innerHTML = '✕';
+                        removeBtn.onclick = () => { currentEditVideos.splice(idx, 1); renderEditVideoPreview(); };
+                        wrapper.appendChild(removeBtn); editVideoPreviewGrid.appendChild(wrapper);
+                    });
+                };
+                renderEditVideoPreview();
+                videoEditContainer.append(vidLabel, editVideoInput, editVideoPreviewGrid);
+
+                card.insertBefore(imageEditContainer, card.querySelector('.text-xs'));
+                card.insertBefore(videoEditContainer, card.querySelector('.text-xs'));
+
+                // Insert tags input AFTER video container
                 const tagsLabel = document.createElement('label');
                 tagsLabel.className = 'block mb-2 text-sm font-medium text-gray-600 mt-4';
                 tagsLabel.textContent = '編輯標籤';
@@ -1121,7 +1405,17 @@
                     }
                     editImageInput.value = ''; renderEditPreview();
                 });
-                
+
+                editVideoInput.addEventListener('change', async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        if (file && file.type.startsWith('video/')) {
+                            currentEditVideos.push(await fileToDataURL(file));
+                        }
+                    }
+                    editVideoInput.value = ''; renderEditVideoPreview();
+                });
+
                 const saveButton = document.createElement('button');
                 saveButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>`;
                 saveButton.className = 'save-btn p-2 rounded-full bg-green-500 text-white hover:bg-green-600 transition duration-150 temp-action-btn';
@@ -1131,16 +1425,16 @@
                 actionsDiv.insertBefore(saveButton, deleteButton); actionsDiv.insertBefore(cancelButton, deleteButton);
 
                 saveButton.addEventListener('click', () => {
-                    const newTitle = titleInput.value.trim(); 
+                    const newTitle = titleInput.value.trim();
                     const newContent = contentTextarea.value.trim();
                     const newTagsStr = tagsInput.value.trim();
                     const newTags = newTagsStr ? newTagsStr.split(/[,，]/).map(t => t.trim()).filter(t => t.length > 0) : [];
 
                     if (!newTitle || !newContent) { showModal('警告', '不能為空。'); return; }
-                    isEditing = false; updateNote(id, newTitle, newContent, currentEditImages, newTags); 
+                    isEditing = false; updateNote(id, newTitle, newContent, currentEditImages, currentEditVideos, newTags);
                 });
                 cancelButton.addEventListener('click', () => {
-                    const hasChanged = titleInput.value.trim()!==originalTitle || contentTextarea.value.trim()!==originalContent || tagsInput.value.trim()!==originalTags || JSON.stringify(currentEditImages)!==JSON.stringify(noteData.images||[]);
+                    const hasChanged = titleInput.value.trim() !== originalTitle || contentTextarea.value.trim() !== originalContent || tagsInput.value.trim() !== originalTags || JSON.stringify(currentEditImages) !== JSON.stringify(noteData.images || []) || JSON.stringify(currentEditVideos) !== JSON.stringify(noteData.videos || []);
                     if (hasChanged) showConfirmModal('放棄變更', '確定放棄？', () => { isEditing = false; cleanupEditUI(card); }, '放棄');
                     else { isEditing = false; cleanupEditUI(card); }
                 });
@@ -1154,7 +1448,7 @@
             const scrollPosition = window.scrollY;
             const notesContainer = document.getElementById('note-list');
             if (!notesContainer) return;
-            
+
             // Gather all unique tags for filter
             const allTags = new Set();
             notes.forEach(note => {
@@ -1162,7 +1456,7 @@
                     note.tags.forEach(tag => allTags.add(tag));
                 }
             });
-            
+
             // Update filter dropdown options
             if (tagFilterSelect) {
                 const currentFilter = tagFilterSelect.value;
@@ -1181,7 +1475,7 @@
                 }
             }
 
-            const sortBy = sortSelect ? sortSelect.value : 'updated_desc'; 
+            const sortBy = sortSelect ? sortSelect.value : 'updated_desc';
             const tagFilter = tagFilterSelect ? tagFilterSelect.value : '';
 
             // Filter notes
@@ -1199,10 +1493,10 @@
                     timeA = a.updated_at || a.created_at || a.timestamp || 0;
                     timeB = b.updated_at || b.created_at || b.timestamp || 0;
                 }
-                return sortBy.endsWith('asc') ? timeA - timeB : timeB - timeA; 
+                return sortBy.endsWith('asc') ? timeA - timeB : timeB - timeA;
             });
 
-            notesContainer.innerHTML = ''; 
+            notesContainer.innerHTML = '';
             if (displayedNotes.length === 0) {
                 if (tagFilter) {
                     notesContainer.innerHTML = '<p class="text-gray-500 text-center p-4">找不到符合標籤的筆記。</p>';
@@ -1218,15 +1512,16 @@
                 const updatedAt = note.updated_at || note.timestamp;
                 const images = note.images || (note.image ? [note.image] : []);
                 const tags = note.tags || [];
+                const videos = note.videos || [];
                 notesContainer.appendChild(createNoteElement({
-                    id: note.id, title: note.title, content: note.content, createdAt: createdAt, updatedAt: updatedAt, images: images, tags: tags
+                    id: note.id, title: note.title, content: note.content, createdAt: createdAt, updatedAt: updatedAt, images: images, videos: videos, tags: tags
                 }));
             });
-            
+
             isEditing = false;
             requestAnimationFrame(() => { window.scrollTo(0, scrollPosition); });
         };
-        
+
         const updateStorageStatusUI = () => {
             if (isFileSystemMode) {
                 if (storageTypeInfo) {
@@ -1269,10 +1564,10 @@
             tagFilterSelect = document.getElementById('tag-filter'); // New
             noteCountStatus = document.getElementById('note-count-status');
             storageTypeInfo = document.getElementById('storage-type-info');
-            storageSelect = document.getElementById('storage-selector'); 
+            storageSelect = document.getElementById('storage-selector');
             reconnectBtn = document.getElementById('reconnect-btn');
             setFolderBtn = document.getElementById('set-folder-btn');
-            
+
             // 漢堡按鈕事件 - Added safety check
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             if (mobileMenuBtn) {
@@ -1284,11 +1579,25 @@
             if (sortSelect) sortSelect.addEventListener('change', loadNotes);
             if (tagFilterSelect) tagFilterSelect.addEventListener('change', loadNotes); // New
             if (storageSelect) storageSelect.addEventListener('change', handleStorageChange);
-            
+
             if (reconnectBtn) reconnectBtn.addEventListener('click', reconnectLocalFolder);
 
             // 隱藏舊的按鈕 (功能已轉移)
             if (setFolderBtn) setFolderBtn.classList.add('hidden');
+
+            const videoInput = document.getElementById('video-input');
+            if (videoInput) {
+                videoInput.addEventListener('change', async (e) => {
+                    const files = Array.from(e.target.files);
+                    for (const file of files) {
+                        if (file && file.type.startsWith('video/')) {
+                            currentNewNoteVideos.push(await fileToDataURL(file));
+                        }
+                    }
+                    videoInput.value = '';
+                    renderNewNoteVideosPreview();
+                });
+            }
 
             // 匯出按鈕 (統一格式)
             const exportBtn = document.getElementById('export-btn');
@@ -1297,40 +1606,58 @@
                     const filenameBase = getBackupFilename();
                     const zip = new JSZip();
                     // 無論何種模式，我們都統一取得資料 (含 Base64)
-                    const notes = await getNotes(); 
-                    
+                    const notes = await getNotes();
+
                     if (notes.length === 0) { showModal('警告', '無資料可匯出'); return; }
 
                     const notesExport = [];
                     notes.forEach((note, noteIndex) => {
-                        const exportNote = { 
+                        const exportNote = {
                             id: note.id,
-                            title: note.title, content: note.content, 
-                            created_at: note.created_at || note.timestamp, 
+                            title: note.title, content: note.content,
+                            created_at: note.created_at || note.timestamp,
                             updated_at: note.updated_at || note.timestamp,
-                            timestamp: note.timestamp, 
+                            timestamp: note.timestamp,
                             image_files: [],
+                            video_files: [],
                             tags: note.tags || [] // Export tags
                         };
 
                         let imagesToExport = note.images || (note.image ? [note.image] : []);
-                        
+                        let videosToExport = note.videos || [];
+
                         // 用 ID 當作資料夾名稱 (FS/IDB 一致)
-                        const folderId = isFileSystemMode ? note.id : note.id; 
-                        
+                        const folderId = isFileSystemMode ? note.id : note.id;
+
                         imagesToExport.forEach((imgBase64, index) => {
-                             if (!imgBase64) return;
-                             const mimeTypeMatch = imgBase64.match(/data:([^;]+);base64,/);
-                             const ext = (mimeTypeMatch ? mimeTypeMatch[1] : 'image/png').split('/')[1] || 'png';
-                             
-                             // 若原本有記錄檔名則沿用，否則生成新檔名
-                             const filename = (note.image_files && note.image_files[index]) ? note.image_files[index] : `image_${index}.${ext}`;
-                             
-                             try {
-                                 zip.file(`images/${folderId}/${filename}`, dataURLToBlob(imgBase64));
-                                 exportNote.image_files.push(filename);
-                             } catch (e) { console.error(e); }
+                            if (!imgBase64) return;
+                            const mimeTypeMatch = imgBase64.match(/data:([^;]+);base64,/);
+                            const ext = (mimeTypeMatch ? mimeTypeMatch[1] : 'image/png').split('/')[1] || 'png';
+
+                            // 若原本有記錄檔名則沿用，否則生成新檔名
+                            const filename = (note.image_files && note.image_files[index]) ? note.image_files[index] : `image_${index}.${ext}`;
+
+                            try {
+                                zip.file(`images/${folderId}/${filename}`, dataURLToBlob(imgBase64));
+                                exportNote.image_files.push(filename);
+                            } catch (e) { console.error(e); }
                         });
+
+                        videosToExport.forEach((vidBase64, index) => {
+                            if (!vidBase64) return;
+                            const mimeTypeMatch = vidBase64.match(/data:([^;]+);base64,/);
+                            const mime = mimeTypeMatch ? mimeTypeMatch[1] : 'video/mp4';
+                            let ext = mime.split('/')[1] || 'mp4';
+                            if (ext === 'quicktime') ext = 'mov';
+
+                            const filename = (note.video_files && note.video_files[index]) ? note.video_files[index] : `video_${index}.${ext}`;
+
+                            try {
+                                zip.file(`videos/${folderId}/${filename}`, dataURLToBlob(vidBase64));
+                                exportNote.video_files.push(filename);
+                            } catch (e) { console.error(e); }
+                        });
+
                         notesExport.push(exportNote);
                     });
 
@@ -1350,7 +1677,7 @@
                 importBtn.onclick = () => {
                     const input = document.createElement('input');
                     input.type = 'file'; input.accept = '.zip'; input.style.display = 'none';
-                    input.onchange = async (e) => { 
+                    input.onchange = async (e) => {
                         if (e.target.files[0]) {
                             const file = e.target.files[0];
                             if (isFileSystemMode) await importFromZipToFS(file);
@@ -1369,7 +1696,7 @@
                     const notesFile = content.file('notes.json');
                     if (!notesFile) throw new Error("找不到 notes.json");
                     const notes = JSON.parse(await notesFile.async('text'));
-                    
+
                     const preparedNotes = [];
                     for (const note of notes) {
                         let importedImages = [];
@@ -1384,25 +1711,39 @@
                                 }
                             }
                         }
+
+                        let importedVideos = [];
+                        if (note.video_files && Array.isArray(note.video_files)) {
+                            for (const filename of note.video_files) {
+                                const path = `videos/${note.id}/${filename}`;
+                                const vidFile = content.file(path);
+                                if (vidFile) {
+                                    const base64 = await vidFile.async('base64');
+                                    const mime = getMimeTypeFromFilename(filename);
+                                    importedVideos.push(`data:${mime};base64,${base64}`);
+                                }
+                            }
+                        }
                         // 相容舊版單層結構
                         if (importedImages.length === 0 && note.image_files) {
                         }
-                        
-                        const newNote = { 
-                            ...note, 
+
+                        const newNote = {
+                            ...note,
                             images: importedImages,
+                            videos: importedVideos,
                             created_at: note.created_at || Date.now(),
                             updated_at: note.updated_at || Date.now(),
                             timestamp: note.timestamp || Date.now()
                         };
-                        delete newNote.id; 
+                        delete newNote.id;
                         preparedNotes.push(newNote);
                     }
 
                     const db = await openNoteDB();
                     const tx = db.transaction([STORE_NAME], 'readwrite');
                     const store = tx.objectStore(STORE_NAME);
-                    
+
                     await new Promise((resolve, reject) => {
                         const req = store.clear();
                         req.onsuccess = resolve;
@@ -1417,12 +1758,12 @@
                         tx.oncomplete = resolve;
                         tx.onerror = reject;
                     });
-                    
-                    showModal('成功', '匯入完成！'); 
+
+                    showModal('成功', '匯入完成！');
                     loadNotes();
                 } catch (e) { showModal('錯誤', '匯入失敗: ' + e.message); }
             };
-            
+
             // 綁定模態視窗中的管理功能
             const manageAddBtn = document.getElementById('manage-add-btn');
             if (manageAddBtn) {
@@ -1435,18 +1776,18 @@
 
             const manageCloseBtn = document.getElementById('manage-close-btn');
             if (manageCloseBtn) manageCloseBtn.onclick = closeManageModal;
-            
+
             const modalManageCloseX = document.getElementById('modal-manage-close-x');
             if (modalManageCloseX) modalManageCloseX.onclick = closeManageModal;
 
             // 初始化
             initStorage();
-            
+
             const form = document.getElementById('note-form');
             if (form) {
                 form.addEventListener('submit', (e) => { e.preventDefault(); createNote(document.getElementById('note-title').value.trim(), document.getElementById('note-content').value.trim()); });
             }
-            
+
             const imageInput = document.getElementById('image-input');
             if (imageInput) {
                 imageInput.multiple = true;
@@ -1461,10 +1802,10 @@
             const removeImgBtn = document.getElementById('remove-image-btn');
             if (removeImgBtn) removeImgBtn.style.display = 'none';
 
-             // Modal buttons event listeners moved inside DOMContentLoaded with safety checks
+            // Modal buttons event listeners moved inside DOMContentLoaded with safety checks
             const modalOkBtn = document.getElementById('modal-ok-btn');
             if (modalOkBtn) modalOkBtn.addEventListener('click', () => document.getElementById('custom-modal').classList.add('hidden'));
-            
+
             const modalCancelBtn = document.getElementById('modal-cancel-btn');
             if (modalCancelBtn) modalCancelBtn.addEventListener('click', () => document.getElementById('custom-modal').classList.add('hidden'));
         });
@@ -1474,14 +1815,14 @@
             if (modalTitle) modalTitle.textContent = title;
             const modalMessage = document.getElementById('modal-message');
             if (modalMessage) modalMessage.textContent = message;
-            
+
             const confirmBtn = document.getElementById('modal-confirm-btn');
             if (confirmBtn) confirmBtn.classList.add('hidden');
             const okBtn = document.getElementById('modal-ok-btn');
             if (okBtn) okBtn.classList.remove('hidden');
             const cancelBtn = document.getElementById('modal-cancel-btn');
-            if (cancelBtn) cancelBtn.classList.add('hidden'); 
-            
+            if (cancelBtn) cancelBtn.classList.add('hidden');
+
             const customModal = document.getElementById('custom-modal');
             if (customModal) customModal.classList.remove('hidden');
         };
@@ -1490,17 +1831,17 @@
             if (modalTitle) modalTitle.textContent = title;
             const modalMessage = document.getElementById('modal-message');
             if (modalMessage) modalMessage.textContent = message;
-            
+
             const okBtn = document.getElementById('modal-ok-btn');
             if (okBtn) okBtn.classList.add('hidden');
-            
+
             const confirmBtn = document.getElementById('modal-confirm-btn');
             if (confirmBtn) {
-                confirmBtn.textContent = confirmText; 
+                confirmBtn.textContent = confirmText;
                 confirmBtn.classList.remove('hidden');
                 confirmBtn.onclick = () => { onConfirm(); document.getElementById('custom-modal').classList.add('hidden'); };
             }
-            
+
             const cancelBtn = document.getElementById('modal-cancel-btn');
             if (cancelBtn) cancelBtn.classList.remove('hidden');
 
@@ -1509,4 +1850,5 @@
         };
     </script>
 </body>
+
 </html>

@@ -23,40 +23,15 @@
 
     .main-container {
       display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-    }
-
-    /* Removed old sidebar, main-content, bottom-container, input-wrapper */
-    /* .sidebar, .main-content, .bottom-container, .input-wrapper { display: none; } */
-
-    .player-wrapper {
-      width: 100%;
-      max-width: 100%;
-    }
-
-    .playlist-wrapper {
-      width: 100%;
-      max-width: 100%;
-    }
-
-    /* Lower Content Split View */
-    .lower-content-row {
-      display: flex;
       gap: 20px;
       width: 100%;
       align-items: flex-start;
     }
 
-    /* App Layout (Removed global flex) */
-    /* .app-layout { display: flex; } */
-
     /* Sidebar Styles */
     .app-sidebar {
       width: 250px;
       background: rgba(255, 255, 255, 0.95);
-      /* border: 1px solid rgba(0, 0, 0, 0.1); Removed border */
       border-radius: 10px;
       display: flex;
       flex-direction: column;
@@ -64,6 +39,23 @@
       backdrop-filter: blur(10px);
       position: sticky;
       top: 20px;
+      align-self: flex-start;
+    }
+
+    .content-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .player-wrapper {
+      width: 100%;
+    }
+
+    .playlist-wrapper {
+      width: 100%;
     }
 
     .sidebar-overlay {
@@ -174,10 +166,6 @@
 
     @media (max-width: 768px) {
       .main-container {
-        grid-template-columns: 1fr;
-      }
-
-      .lower-content-row {
         flex-direction: column;
       }
 
@@ -556,80 +544,139 @@
         </div>
       </div>
 
-      <div class="main-container">
-        <!-- 影片播放器區塊 -->
-        <div class="player-wrapper">
-          <div class="player-container">
-            <div v-if="currentVideo" class="video-player" id="yt-player-container">
-              <div id="yt-player"></div>
+      <!-- Import Mode Selection Modal -->
+      <div class="modal fade" id="importModeModal" tabindex="-1" aria-hidden="true" ref="importModeModal">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content rounded-4 shadow">
+            <div class="modal-header border-bottom-0">
+              <h5 class="modal-title fw-bold">
+                <i class="fas fa-file-import me-2 text-primary"></i>匯入資料
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div v-else class="video-player"
-              style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
-              <div style="text-align: center; color: #999;">
-                <i v-if="playlist.length === 0" class="fas fa-list"
-                  style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-                <i v-else class="fas fa-play" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
-                <p v-if="playlist.length === 0">播放清單為空</p>
-                <p v-else>請選擇播放清單中的影片</p>
-                <p style="font-size: 12px;" v-if="playlist.length === 0">請在下方新增 YouTube 影片開始</p>
+            <div class="modal-body pt-2 pb-4">
+              <p class="text-muted mb-4">請選擇匯入方式：</p>
+
+              <!-- Replace Option -->
+              <div class="d-grid mb-3">
+                <button class="btn btn-danger rounded-pill py-3" @click="selectImportMode('replace')">
+                  <i class="fas fa-sync-alt me-2"></i>
+                  <strong>完全取代</strong>
+                  <br>
+                  <small class="opacity-75">清除現有資料，使用匯入檔案</small>
+                </button>
               </div>
-            </div>
-            <div class="player-info">
-              <div class="player-title">
-                {{ currentVideo ? currentVideo.title : '未選擇影片' }}
+
+              <!-- Merge Option -->
+              <div class="d-grid mb-3">
+                <button class="btn btn-success rounded-pill py-3" @click="selectImportMode('merge')">
+                  <i class="fas fa-layer-group me-2"></i>
+                  <strong>合併資料</strong>
+                  <br>
+                  <small class="opacity-75">保留現有資料，新增不重複的影片</small>
+                </button>
               </div>
-              <div style="font-size: 14px; color: #666;">
-                {{ currentVideo ? `影片 ID: ${currentVideo.id}` : '播放清單中沒有影片' }}
+
+              <!-- Cancel Option -->
+              <div class="d-grid">
+                <button class="btn btn-secondary rounded-pill py-2" data-bs-dismiss="modal">
+                  <i class="fas fa-times me-2"></i>取消
+                </button>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- 新增影片區塊 Removed -->
-        <!-- <div class="input-area">...</div> -->
+      <div class="main-container">
+        <!-- Sidebar -->
+        <aside class="app-sidebar" :class="{ open: isSidebarOpen }">
+          <div class="sidebar-header">
+            <i class="fab fa-youtube"></i>
+            <span>YT Player</span>
+          </div>
+          <ul class="sidebar-menu">
+            <li class="menu-item" @click="openAddModal">
+              <i class="fas fa-plus-circle" style="color: #667eea;"></i>
+              <span>新增影片</span>
+            </li>
+            <li class="menu-item" :class="{ active: currentView === 'now-playing' }" @click="setView('now-playing')">
+              <i class="fas fa-play-circle"></i>
+              <span>正在撥放</span>
+            </li>
+            <li class="menu-item" :class="{ active: currentView === 'library' }" @click="setView('library')">
+              <i class="fas fa-list-ul"></i>
+              <span>媒體庫</span>
+            </li>
 
-        <!-- Split View: Sidebar + Playlist -->
-        <div class="lower-content-row">
-          <!-- Sidebar -->
-          <aside class="app-sidebar" :class="{ open: isSidebarOpen }">
-            <div class="sidebar-header">
-              <i class="fab fa-youtube"></i>
-              <span>YT Player</span>
-            </div>
-            <ul class="sidebar-menu">
-              <li class="menu-item" @click="openAddModal">
-                <i class="fas fa-plus-circle" style="color: #667eea;"></i>
-                <span>新增影片</span>
-              </li>
-              <li class="menu-item" :class="{ active: currentView === 'now-playing' }" @click="setView('now-playing')">
-                <i class="fas fa-play-circle"></i>
-                <span>正在撥放</span>
-              </li>
-              <li class="menu-item" :class="{ active: currentView === 'library' }" @click="setView('library')">
-                <i class="fas fa-list-ul"></i>
-                <span>媒體庫</span>
-              </li>
+            <!-- Import/Export Group -->
+            <li class="menu-item" @click="toggleImportExportSubmenu">
+              <i class="fas fa-file-import"></i>
+              <span>匯入匯出</span>
+              <i class="fas fa-chevron-down submenu-toggle-icon" :class="{ rotated: isImportExportSubmenuOpen }"></i>
+            </li>
 
-              <!-- Playlists Group -->
-              <li class="menu-item" @click="togglePlaylistsSubmenu">
-                <i class="fas fa-folder"></i>
-                <span>播放清單</span>
-                <i class="fas fa-chevron-down submenu-toggle-icon" :class="{ rotated: isPlaylistsSubmenuOpen }"></i>
+            <!-- Import/Export Submenu -->
+            <ul class="sidebar-submenu" v-if="isImportExportSubmenuOpen">
+              <li class="menu-item" @click="exportData">
+                <span><i class="fas fa-download me-2"></i>匯出資料</span>
               </li>
-
-              <!-- Submenu -->
-              <ul class="sidebar-submenu" v-if="isPlaylistsSubmenuOpen">
-                <li v-for="(pl, index) in customPlaylists" :key="index" class="menu-item"
-                  :class="{ active: currentView === 'custom-playlist' && currentPlaylistIndex === index }"
-                  @click="setView('custom-playlist', index)">
-                  <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ pl.name }}</span>
-                </li>
-                <li v-if="customPlaylists.length === 0" class="menu-item" style="color: #999; cursor: default;">
-                  <span style="font-size: 12px; padding-left: 5px;">(無自訂清單)</span>
-                </li>
-              </ul>
+              <li class="menu-item" @click="triggerFileImport">
+                <span><i class="fas fa-upload me-2"></i>匯入資料</span>
+              </li>
             </ul>
-          </aside>
+
+            <!-- Playlists Group -->
+            <li class="menu-item" @click="togglePlaylistsSubmenu">
+              <i class="fas fa-folder"></i>
+              <span>播放清單</span>
+              <i class="fas fa-chevron-down submenu-toggle-icon" :class="{ rotated: isPlaylistsSubmenuOpen }"></i>
+            </li>
+
+            <!-- Submenu -->
+            <ul class="sidebar-submenu" v-if="isPlaylistsSubmenuOpen">
+              <li v-for="(pl, index) in customPlaylists" :key="index" class="menu-item"
+                :class="{ active: currentView === 'custom-playlist' && currentPlaylistIndex === index }"
+                @click="setView('custom-playlist', index)">
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ pl.name
+                  }}</span>
+              </li>
+              <li v-if="customPlaylists.length === 0" class="menu-item" style="color: #999; cursor: default;">
+                <span style="font-size: 12px; padding-left: 5px;">(無自訂清單)</span>
+              </li>
+            </ul>
+          </ul>
+        </aside>
+
+        <!-- Content Wrapper: Player + Playlist -->
+        <div class="content-wrapper">
+          <!-- 影片播放器區塊 -->
+          <div class="player-wrapper">
+            <div class="player-container">
+              <div v-if="currentVideo" class="video-player" id="yt-player-container">
+                <div id="yt-player"></div>
+              </div>
+              <div v-else class="video-player"
+                style="display: flex; align-items: center; justify-content: center; background: #f0f0f0;">
+                <div style="text-align: center; color: #999;">
+                  <i v-if="playlist.length === 0" class="fas fa-list"
+                    style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                  <i v-else class="fas fa-play" style="font-size: 48px; margin-bottom: 15px; display: block;"></i>
+                  <p v-if="playlist.length === 0">播放清單為空</p>
+                  <p v-else>請選擇播放清單中的影片</p>
+                  <p style="font-size: 12px;" v-if="playlist.length === 0">請在下方新增 YouTube 影片開始</p>
+                </div>
+              </div>
+              <div class="player-info">
+                <div class="player-title">
+                  {{ currentVideo ? currentVideo.title : '未選擇影片' }}
+                </div>
+                <div style="font-size: 14px; color: #666;">
+                  {{ currentVideo ? `影片 ID: ${currentVideo.id}` : '播放清單中沒有影片' }}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- 播放列表區塊 -->
           <div class="playlist-wrapper">
@@ -694,6 +741,9 @@
       </div>
     </div>
 
+    <!-- Hidden file input for import -->
+    <input type="file" id="fileImport" accept=".json" style="display: none;" ref="fileInput">
+
     <!-- Vue.js 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <!-- Bootstrap JS -->
@@ -707,6 +757,7 @@
       let youtubePlayer = null;
       let addVideoModal = null; /* Bootstrap Modal Instance */
       let addToPlaylistModal = null; /* Add To Playlist Modal Instance */
+      let importModeModal = null; /* Import Mode Selection Modal Instance */
 
       const app = createApp({
         data() {
@@ -722,9 +773,11 @@
             newUrl: '',
             newPlaylistName: '', /* For creating new playlist in modal */
             selectedVideoForAdd: null, /* Video being added */
+            selectedImportMode: 'replace', /* 'merge' or 'replace' */
             playMode: 'loop', // 'single', 'loop', 'random'
             draggedIndex: null,
             dragOverIndex: null,
+            isImportExportSubmenuOpen: false, /* Submenu for import/export */
             message: {
               text: '',
               type: 'success'
@@ -806,6 +859,9 @@
             keyboard: false // Optional: adjust options
           });
           addToPlaylistModal = new bootstrap.Modal(document.getElementById('addToPlaylistModal'), {
+            keyboard: false
+          });
+          importModeModal = new bootstrap.Modal(document.getElementById('importModeModal'), {
             keyboard: false
           });
         },
@@ -1045,6 +1101,9 @@
           togglePlaylistsSubmenu() {
             this.isPlaylistsSubmenuOpen = !this.isPlaylistsSubmenuOpen;
           },
+          toggleImportExportSubmenu() {
+            this.isImportExportSubmenuOpen = !this.isImportExportSubmenuOpen;
+          },
           getEmptyStateMessage() {
             if (this.currentView === 'library') return '媒體庫為空';
             if (this.currentView === 'custom-playlist') return '此清單為空';
@@ -1162,6 +1221,157 @@
             } catch (e) {
               console.error('讀取播放清單失敗:', e);
             }
+          },
+          exportData() {
+            const data = {
+              playlist: this.playlist,
+              library: this.library,
+              customPlaylists: this.customPlaylists,
+              playMode: this.playMode,
+              currentIndex: this.currentIndex,
+              exportedAt: new Date().toISOString()
+            };
+
+            const dataStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            link.href = url;
+            link.download = `yt-player-backup-${timestamp}.json`;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            this.showMessage('資料已匯出', 'success');
+
+            if (window.innerWidth <= 768) {
+              this.isSidebarOpen = false;
+            }
+          },
+          triggerFileImport() {
+            // Show selection dialog: merge or replace
+            const message = '請選擇匯入方式：\n\n' +
+              '【確定】= 合併資料（保留現有資料，新增不重複的影片）\n' +
+              '【取消】= 完全取代（清除現有資料，使用匯入檔案）';
+
+            if (confirm(message)) {
+              // User chose merge
+              this.selectedImportMode = 'merge';
+            } else {
+              // User chose replace
+              this.selectedImportMode = 'replace';
+            }
+
+            // Trigger file input
+            const fileInput = document.getElementById('fileImport');
+            if (fileInput) {
+              fileInput.click();
+              fileInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  this.importData(file);
+                }
+                // Reset input
+                fileInput.value = '';
+              };
+            }
+
+            if (window.innerWidth <= 768) {
+              this.isSidebarOpen = false;
+            }
+          },
+          importData(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const importedData = JSON.parse(e.target.result);
+
+                // Validate data structure
+                if (!importedData || typeof importedData !== 'object') {
+                  this.showMessage('無效的檔案格式', 'danger');
+                  return;
+                }
+
+                const mode = this.selectedImportMode || 'replace';
+
+                if (mode === 'replace') {
+                  // Replace mode: completely replace all data
+                  this.library = importedData.library || [];
+                  this.playlist = importedData.playlist || [];
+                  this.customPlaylists = importedData.customPlaylists || [];
+                  this.playMode = importedData.playMode || 'loop';
+                  this.currentIndex = importedData.currentIndex || -1;
+
+                  this.showMessage('資料已完全取代', 'success');
+                } else {
+                  // Merge mode: merge data intelligently
+                  this.mergeData(importedData);
+                  this.showMessage('資料已合併', 'success');
+                }
+
+                // Save to localStorage
+                this.savePlaylist();
+
+                // If playlist has items, switch to now-playing view
+                if (this.playlist.length > 0) {
+                  this.currentView = 'now-playing';
+                  if (this.currentIndex < 0 || this.currentIndex >= this.playlist.length) {
+                    this.currentIndex = 0;
+                  }
+                } else {
+                  this.currentView = 'library';
+                }
+
+              } catch (error) {
+                console.error('匯入失敗:', error);
+                this.showMessage('匯入失敗：檔案格式錯誤', 'danger');
+              }
+            };
+            reader.readAsText(file);
+          },
+          mergeData(importedData) {
+            // Helper function to merge arrays avoiding duplicates by video ID
+            const mergeVideos = (existing, incoming) => {
+              const existingIds = new Set(existing.map(v => v.id));
+              const newVideos = incoming.filter(v => !existingIds.has(v.id));
+              return [...existing, ...newVideos];
+            };
+
+            // Merge library
+            if (importedData.library && Array.isArray(importedData.library)) {
+              this.library = mergeVideos(this.library, importedData.library);
+            }
+
+            // Merge now playing playlist
+            if (importedData.playlist && Array.isArray(importedData.playlist)) {
+              this.playlist = mergeVideos(this.playlist, importedData.playlist);
+            }
+
+            // Merge custom playlists
+            if (importedData.customPlaylists && Array.isArray(importedData.customPlaylists)) {
+              importedData.customPlaylists.forEach(importedPL => {
+                // Find if playlist with same name exists
+                const existingPL = this.customPlaylists.find(pl => pl.name === importedPL.name);
+
+                if (existingPL) {
+                  // Merge items into existing playlist
+                  existingPL.items = mergeVideos(existingPL.items, importedPL.items || []);
+                } else {
+                  // Add new playlist
+                  this.customPlaylists.push({
+                    name: importedPL.name,
+                    items: importedPL.items || []
+                  });
+                }
+              });
+            }
+          },
+          toggleSidebar() {
+            this.isSidebarOpen = !this.isSidebarOpen;
           }
         }
       }).mount('#app');

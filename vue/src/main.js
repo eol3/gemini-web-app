@@ -1,0 +1,21 @@
+// 使用全局的 Vue
+const { createApp } = Vue
+
+const App = {
+  data() {
+    return {
+      isMenuOpen: false,
+      isExport: window.IS_EXPORT || false
+    }
+  },
+  methods: {
+    toggleMenu() {
+      this.isMenuOpen = !this.isMenuOpen
+    },
+    closeMenu() {
+      this.isMenuOpen = false
+    }
+  }
+}
+
+createApp(App).use(router).mount('#app')
