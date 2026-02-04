@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPFS 離線記事本管理器</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 20px auto; padding: 0 10px; line-height: 1.6; }
+        .controls { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .file-list { border: 1px solid #ddd; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; }
+        .file-item:hover { background: #f0f7ff; }
+        .file-item.active { background: #e3f2fd; font-weight: bold; }
+        .editor-area { margin-top: 20px; }
+        textarea { width: 100%; height: 200px; margin-top: 10px; padding: 10px; box-sizing: border-box; }
+        button { cursor: pointer; padding: 5px 15px; margin-right: 5px; }
+        .btn-save { background: #4CAF50; color: white; border: none; padding: 10px 20px; }
+        .btn-delete { background: #f44336; color: white; border: none; }
+        .status { font-size: 0.9em; color: #666; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <h2>📁 OPFS 檔案管理器</h2>
+
+    <div class="controls">
+        <input type="text" id="newFileName" placeholder="新檔案名稱 (例如: note1)"> .txt
+        <button onclick="createNewFile()">新增檔案</button>
+    </div>
+
+    <h3>檔案列表</h3>
+    <div id="fileList" class="file-list">讀取中...</div>
+    <div id="status" class="status"></div>
+
+    <div class="editor-area" id="editorArea" style="display:none;">
+        <h3>正在編輯：<span id="currentFileNameDisplay"></span></h3>
+        <textarea id="editorContent"></textarea><br>
+        <button class="btn-save" onclick="saveCurrentFile()">儲存內容</button>
+        <button class="btn-delete" onclick="deleteCurrentFile()">刪除此檔案</button>
+    </div>
+
+    <script>
+        let currentFileHandle = null;
+
+        // 初始化：列出所有檔案
+        async function refreshFileList() {
+            const fileListElement = document.getElementById('fileList');
+            fileListElement.innerHTML = '';
+            
+            try {
+                const root = await navigator.storage.getDirectory();
+                let hasFiles = false;
+
+                // 迭代根目錄下的所有項目
+                for await (const entry of root.values()) {
+                    if (entry.kind === 'file') {
+                        hasFiles = true;
+                        const div = document.createElement('div');
+                        div.className = 'file-item';
+                        if (currentFileHandle && currentFileHandle.name === entry.name) {
+                            div.classList.add('active');
+                        }
+                        div.innerHTML = `<span>${entry.name}</span>`;
+                        div.onclick = () => openFile(entry.name);
+                        fileListElement.appendChild(div);
+                    }
+                }
+
+                if (!hasFiles) {
+                    fileListElement.innerHTML = '<div style="color:#999">目前沒有任何檔案</div>';
+                }
+            } catch (err) {
+                showStatus("讀取清單失敗: " + err.message);
+            }
+        }
+
+        // 1. 新增檔案
+        async function createNewFile() {
+            const input = document.getElementById('newFileName');
+            let name = input.value.trim();
+            if (!name) return alert("請輸入檔名");
+            if (!name.endsWith('.txt')) name += '.txt';
+
+            try {
+                const root = await navigator.storage.getDirectory();
+                // 建立檔案 (如果已存在會直接開啟)
+                await root.getFileHandle(name, { create: true });
+                input.value = '';
+                showStatus(`已建立 ${name}`);
+                await refreshFileList();
+                await openFile(name); // 自動開啟新檔
+            } catch (err) {
+                showStatus("建立失敗: " + err.message);
+            }
+        }
+
+        // 2. 開啟檔案讀取
+        async function openFile(name) {
+            try {
+                const root = await navigator.storage.getDirectory();
+                currentFileHandle = await root.getFileHandle(name);
+                
+                const file = await currentFileHandle.getFile();
+                const content = await file.text();
+
+                document.getElementById('editorArea').style.display = 'block';
+                document.getElementById('currentFileNameDisplay').innerText = name;
+                document.getElementById('editorContent').value = content;
+                
+                refreshFileList();
+                showStatus(`已載入 ${name}`);
+            } catch (err) {
+                showStatus("讀取失敗: " + err.message);
+            }
+        }
+
+        // 3. 儲存目前編輯的檔案
+        async function saveCurrentFile() {
+            if (!currentFileHandle) return;
+            const content = document.getElementById('editorContent').value;
+
+            try {
+                const writable = await currentFileHandle.createWritable();
+                await writable.write(content);
+                await writable.close();
+                showStatus("✅ 儲存成功！");
+            } catch (err) {
+                showStatus("儲存失敗: " + err.message);
+            }
+        }
+
+        // 4. 刪除目前檔案
+        async function deleteCurrentFile() {
+            if (!currentFileHandle) return;
+            if (!confirm(`確定要刪除 ${currentFileHandle.name} 嗎？`)) return;
+
+            try {
+                const root = await navigator.storage.getDirectory();
+                await root.removeEntry(currentFileHandle.name);
+                
+                currentFileHandle = null;
+                document.getElementById('editorArea').style.display = 'none';
+                showStatus("🗑️ 檔案已刪除");
+                refreshFileList();
+            } catch (err) {
+                showStatus("刪除失敗: " + err.message);
+            }
+        }
+
+        function showStatus(msg) {
+            document.getElementById('status').innerText = msg;
+            setTimeout(() => { document.getElementById('status').innerText = ""; }, 3000);
+        }
+
+        // 網頁開啟時執行
+        refreshFileList();
+    </script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>記事本</title>
+
+  <link rel="stylesheet" href="./src/styles.css">
+
+
+</head>
+
+<body>
+
+  <div id="app">
+    <header class="navbar">
+      <div class="navbar-brand">
+        <h1>記事本</h1>
+        <button class="menu-toggle" @click="toggleMenu" aria-label="Toggle navigation">
+          <span class="hamburger"></span>
+        </button>
+      </div>
+
+      <nav :class="{ 'is-open': isMenuOpen }">
+        <router-link to="/" @click="closeMenu">首頁</router-link>
+        <router-link to="/about" @click="closeMenu">關於</router-link>
+
+      </nav>
+    </header>
+
+    <router-view></router-view>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
+
+  <script src="./data/data.js"></script>
+  <script src="./src/views/Home.js"></script>
+  <script src="./src/views/About.js"></script>
+  <script src="./src/views/NoteDetail.js"></script>
+
+  <script src="./src/router.js"></script>
+  <script src="./src/main.js"></script>
+
+</body>
+
+</html>
