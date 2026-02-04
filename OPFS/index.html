@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPFS 多檔案記事本</title>
+    <style>
+        :root { --primary: #007AFF; }
+        body { font-family: -apple-system, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background: #f5f5f7; }
+        header { background: #fff; padding: 15px; border-bottom: 1px solid #ddd; display: flex; gap: 10px; }
+        #sidebar { width: 100%; max-height: 30vh; overflow-y: auto; background: white; border-bottom: 1px solid #ddd; }
+        .file-item { padding: 12px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; background: white; }
+        .file-item.active { background: #e3f2fd; color: var(--primary); font-weight: bold; }
+        main { flex: 1; display: flex; flex-direction: column; padding: 10px; }
+        textarea { flex: 1; border: 1px solid #ddd; border-radius: 8px; padding: 15px; font-size: 16px; line-height: 1.5; outline: none; }
+        .btn { padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer; font-weight: 500; }
+        .btn-add { background: var(--primary); color: white; }
+        .btn-del { background: #ff3b30; color: white; font-size: 12px; }
+        .status { font-size: 12px; color: #888; text-align: center; padding: 5px; }
+    </style>
+</head>
+<body>
+
+<header>
+    <input type="text" id="newFileName" placeholder="新筆記名稱..." style="flex:1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+    <button class="btn btn-add" onclick="createFile()">新增</button>
+</header>
+
+<div id="sidebar">
+    </div>
+
+<main id="editorArea" style="display:none;">
+    <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span id="currentTitle" style="font-weight: bold;"></span>
+        <button class="btn btn-del" onclick="deleteFile()">刪除此檔</button>
+    </div>
+    <textarea id="editor" placeholder="開始寫作..."></textarea>
+    <button class="btn btn-add" style="margin-top:10px; background:#34c759" onclick="saveFile()">手動儲存</button>
+</main>
+
+<div id="status" class="status">正在啟動系統...</div>
+
+<script>
+/** 1. 建立 Web Worker (使用 Blob 讓 HTML 單檔運作) **/
+const workerCode = `
+self.onmessage = async (e) => {
+    const { type, fileName, content } = e.data;
+    const root = await navigator.storage.getDirectory();
+    try {
+        if (type === 'save') {
+            const fileHandle = await root.getFileHandle(fileName, { create: true });
+            const accessHandle = await fileHandle.createSyncAccessHandle();
+            const encoder = new TextEncoder();
+            const writeBuffer = encoder.encode(content);
+            accessHandle.truncate(0);
+            accessHandle.write(writeBuffer, { at: 0 });
+            accessHandle.flush();
+            accessHandle.close();
+            self.postMessage({ type: 'done', msg: '儲存成功' });
+        } else if (type === 'read') {
+            const fileHandle = await root.getFileHandle(fileName);
+            const file = await fileHandle.getFile();
+            const text = await file.text();
+            self.postMessage({ type: 'load', content: text, fileName });
+        } else if (type === 'delete') {
+            await root.removeEntry(fileName);
+            self.postMessage({ type: 'done', msg: '刪除成功' });
+        }
+    } catch (err) {
+        self.postMessage({ type: 'error', msg: err.message });
+    }
+};`;
+
+const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+const worker = new Worker(URL.createObjectURL(workerBlob));
+
+/** 2. UI 邏輯 **/
+let currentFileName = null;
+
+// 監聽 Worker
+worker.onmessage = (e) => {
+    const data = e.data;
+    if (data.type === 'load') {
+        document.getElementById('editorArea').style.display = 'flex';
+        document.getElementById('currentTitle').innerText = data.fileName;
+        document.getElementById('editor').value = data.content;
+        currentFileName = data.fileName;
+        updateStatus(`已開啟 ${data.fileName}`);
+        refreshList();
+    } else if (data.type === 'done') {
+        updateStatus(data.msg);
+        refreshList();
+    } else if (data.type === 'error') {
+        updateStatus("錯誤: " + data.msg);
+    }
+};
+
+async function refreshList() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.innerHTML = '';
+    const root = await navigator.storage.getDirectory();
+    let count = 0;
+    
+    for await (const entry of root.values()) {
+        if (entry.kind === 'file') {
+            count++;
+            const div = document.createElement('div');
+            // 這裡改用普通字串拼接，避免樣板字串失效
+            div.className = 'file-item' + (currentFileName === entry.name ? ' active' : '');
+            
+            // 修正：手動建立顯示名稱
+            const nameSpan = document.createElement('span');
+            nameSpan.innerText = entry.name; 
+            div.appendChild(nameSpan);
+            
+            div.onclick = () => {
+                worker.postMessage({ type: 'read', fileName: entry.name });
+            };
+            sidebar.appendChild(div);
+        }
+    }
+    if(count === 0) sidebar.innerHTML = '<div style="padding:20px;color:#888;text-align:center;">尚無檔案</div>';
+}
+
+function createFile() {
+    let name = document.getElementById('newFileName').value.trim();
+    if (!name) return;
+    if (!name.endsWith('.txt')) name += '.txt';
+    worker.postMessage({ type: 'save', fileName: name, content: '' });
+    document.getElementById('newFileName').value = '';
+}
+
+function saveFile() {
+    if (!currentFileName) return;
+    const content = document.getElementById('editor').value;
+    worker.postMessage({ type: 'save', fileName: currentFileName, content });
+}
+
+function deleteFile() {
+    if (!currentFileName || !confirm("確定刪除？")) return;
+    worker.postMessage({ type: 'delete', fileName: currentFileName });
+    document.getElementById('editorArea').style.display = 'none';
+    currentFileName = null;
+}
+
+function updateStatus(msg) {
+    document.getElementById('status').innerText = msg;
+}
+
+// 啟動
+refreshList();
+updateStatus("系統就緒 (OPFS Worker 模式)");
+
+</script>
+</body>
+</html>
