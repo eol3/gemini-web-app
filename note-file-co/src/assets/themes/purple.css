@@ -1,0 +1,32 @@
+/* Purple Theme */
+:root.theme-purple {
+    --primary-color: #9c27b0;
+    --secondary-color: #3f51b5;
+    --light-bg: #fce4ec;
+    --border-color: #e1bee7;
+    --text-color: #4a148c;
+    --light-text: #8e24aa;
+}
+
+:root.theme-purple {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-purple body {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-purple .navbar-custom {
+    background-color: var(--primary-color);
+}
+
+:root.theme-purple .note-item {
+    background-color: white;
+    border-left-color: var(--primary-color);
+}
+
+:root.theme-purple .note-category {
+    background-color: var(--secondary-color);
+}

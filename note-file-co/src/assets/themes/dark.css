@@ -1,0 +1,51 @@
+/* Dark Theme */
+:root.theme-dark {
+    --primary-color: #1e1e1e;
+    --secondary-color: #3f51b5;
+    --light-bg: #121212;
+    --border-color: #333;
+    --text-color: #e0e0e0;
+    --light-text: #b0b0b0;
+}
+
+:root.theme-dark {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-dark body {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-dark .navbar-custom {
+    background-color: var(--primary-color);
+}
+
+:root.theme-dark .note-item {
+    background-color: #2a2a2a;
+    color: var(--text-color);
+    border-left-color: var(--secondary-color);
+}
+
+:root.theme-dark .note-item:hover {
+    box-shadow: 0 2px 8px rgba(255,255,255,0.1);
+}
+
+:root.theme-dark .editor-container,
+:root.theme-dark .editor-header,
+:root.theme-dark .editor-footer {
+    background-color: #2a2a2a;
+    color: var(--text-color);
+}
+
+:root.theme-dark .editor-textarea {
+    background-color: #1e1e1e;
+    color: var(--text-color);
+}
+
+:root.theme-dark .settings-group {
+    background-color: #2a2a2a;
+    color: var(--text-color);
+    border-color: var(--border-color);
+}

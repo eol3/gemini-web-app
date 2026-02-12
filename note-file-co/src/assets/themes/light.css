@@ -1,0 +1,27 @@
+/* Light Theme (default) */
+:root.theme-light {
+    --primary-color: #4CAF50;
+    --secondary-color: #2196F3;
+    --light-bg: #f5f5f5;
+    --border-color: #ddd;
+    --text-color: #333;
+    --light-text: #666;
+}
+
+:root.theme-light body {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-light .navbar-custom {
+    background-color: var(--primary-color);
+}
+
+:root.theme-light .note-item {
+    background-color: white;
+    border-left-color: var(--primary-color);
+}
+
+:root.theme-light .note-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}

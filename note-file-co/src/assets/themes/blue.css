@@ -1,0 +1,32 @@
+/* Blue Theme */
+:root.theme-blue {
+    --primary-color: #2196F3;
+    --secondary-color: #009688;
+    --light-bg: #f3f7fa;
+    --border-color: #b3e5fc;
+    --text-color: #0d47a1;
+    --light-text: #5c6bc0;
+}
+
+:root.theme-blue {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-blue body {
+    background-color: var(--light-bg);
+    color: var(--text-color);
+}
+
+:root.theme-blue .navbar-custom {
+    background-color: var(--primary-color);
+}
+
+:root.theme-blue .note-item {
+    background-color: white;
+    border-left-color: var(--primary-color);
+}
+
+:root.theme-blue .note-category {
+    background-color: var(--secondary-color);
+}

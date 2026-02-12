@@ -1,0 +1,224 @@
+/* Minimalist Design System from ./vue/src/styles.css */
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9f9f9;
+    --text-primary: #2c2c2c;
+    --text-secondary: #6e6e6e;
+    --accent-color: #333333;
+    --border-color: #eeeeee;
+    --danger-color: #d32f2f;
+    --success-color: #388e3c;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.02);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.05);
+    --radius-sm: 4px;
+    --radius-md: 8px;
+}
+
+[data-theme="dark"] {
+    --bg-primary: #212529;
+    --bg-secondary: #343a40;
+    --text-primary: #f8f9fa;
+    --text-secondary: #adb5bd;
+    --accent-color: #f8f9fa;
+    --border-color: #495057;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="warm"] {
+    --bg-primary: #fff8e1;
+    --bg-secondary: #ffecb3;
+    --text-primary: #5d4037;
+    --text-secondary: #8d6e63;
+    --accent-color: #5d4037;
+    --border-color: #ffe082;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    padding: 20px;
+    /* Reduced for mobile friendly default, overrides in media query */
+    transition: background-color 0.3s, color 0.3s;
+}
+
+@media (min-width: 768px) {
+    body {
+        padding: 40px;
+    }
+}
+
+#app {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* Headers */
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 20px;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 2rem;
+    letter-spacing: -1px;
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+nav {
+    display: flex;
+    gap: 20px;
+}
+
+nav a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+nav a:hover,
+nav a.router-link-active {
+    color: var(--accent-color);
+}
+
+/* Buttons */
+button {
+    cursor: pointer;
+    font-family: inherit;
+    border: none;
+    background: none;
+}
+
+.btn-primary {
+    background-color: var(--accent-color);
+    color: var(--bg-primary);
+    /* Adapted for contrast */
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}
+
+/* Lists */
+.notes-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+}
+
+.note-card {
+    background: var(--bg-primary);
+    /* Fix for dark mode transparency issue if any */
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    height: 240px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
+.note-card:hover {
+    border-color: #ccc;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.note-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.note-content {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    flex-grow: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    line-clamp: 5;
+    -webkit-box-orient: vertical;
+    margin-bottom: 16px;
+}
+
+.note-footer {
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Editor */
+.input-title {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+    background: transparent;
+    color: var(--text-primary);
+}
+
+.input-title:focus {
+    outline: none;
+    border-bottom-color: var(--accent-color);
+}
+
+.input-content {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 1rem;
+    border: none;
+    resize: none;
+    background: transparent;
+    color: var(--text-primary);
+    /* Fixed color */
+    flex-grow: 1;
+}
+
+.input-content:focus {
+    outline: none;
+}
+
+/* Overrides for Bootstrap conflicts if necessary */
+.form-control:focus {
+    box-shadow: none;
+    border-color: var(--accent-color);
+}
