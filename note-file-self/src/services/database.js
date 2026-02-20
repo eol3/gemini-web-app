@@ -3,7 +3,9 @@ export let db = null;
 export async function initDataBase() {
   try {
     // Initialize SQL.js
-    const SQL = await initSql();
+    const SQL = await initSqlJs({
+      locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
+    });
 
     // Try to initialize OPFS for file storage
     const root = await navigator.storage.getDirectory?.();
@@ -29,18 +31,6 @@ export async function initDataBase() {
 
   } catch (e) {
     alert('❌ Database initialization error: ' + e.message);
-  }
-}
-
-export async function initSql() {
-  if (window.initSqlJs) {
-    try {
-      return await window.initSqlJs({
-        locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
-      });
-    } catch (e) {
-      alert('SQL.js with config failed, trying without...', e);
-    }
   }
 }
 
