@@ -30,7 +30,7 @@ export async function initDataBase() {
     }
 
   } catch (e) {
-    alert('❌ Database initialization error: ' + e.message);
+    alert(e.message);
   }
 }
 
