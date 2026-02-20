@@ -18,6 +18,7 @@ export async function initDataBase() {
         db = new SQL.Database(data);
       } catch (e) {
         // Create new database
+        alert(e.message)
         db = new SQL.Database();
         initTables();
         await saveDB();
@@ -28,6 +29,7 @@ export async function initDataBase() {
     }
 
   } catch (e) {
+    alert(e.message)
     console.error('❌ Database initialization error:', e);
   }
 }
@@ -49,6 +51,7 @@ export async function saveDB() {
     await writable.close();
     return true;
   } catch (e) {
+    alert(e.message)
     console.warn('Could not save to OPFS:', e);
     return false;
   }
