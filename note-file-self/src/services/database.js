@@ -18,26 +18,30 @@ export async function initDataBase() {
         db = new SQL.Database(data);
       } catch (e) {
         // Create new database
-        alert(e.message)
         db = new SQL.Database();
         initTables();
         await saveDB();
       }
     } else {
       // OPFS not available
-      console.warn('⚠️ OPFS not available, using in-memory database');
+      alert('⚠️ OPFS not available, using in-memory database');
     }
 
   } catch (e) {
-    alert(e.message)
-    console.error('❌ Database initialization error:', e);
+    alert('❌ Database initialization error: ' + e.message);
   }
 }
 
 export async function initSql() {
-  return await initSqlJs({
-    locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
-  });
+  if (window.initSqlJs) {
+    try {
+      return await window.initSqlJs({
+        locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
+      });
+    } catch (e) {
+      alert('SQL.js with config failed, trying without...', e);
+    }
+  }
 }
 
 export async function saveDB() {
@@ -51,7 +55,6 @@ export async function saveDB() {
     await writable.close();
     return true;
   } catch (e) {
-    alert(e.message)
     console.warn('Could not save to OPFS:', e);
     return false;
   }
