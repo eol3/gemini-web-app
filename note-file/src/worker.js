@@ -15,21 +15,35 @@ self.onmessage = async (e) => {
       }
 
       const fileHandle = await dirHandle.getFileHandle(msgFileName, { create: true });
-      const accessHandle = await fileHandle.createSyncAccessHandle();
 
-      let writeBuffer;
-      if (typeof content === 'string') {
-        const encoder = new TextEncoder();
-        writeBuffer = encoder.encode(content);
-      } else {
-        // Assuming ArrayBuffer or View
-        writeBuffer = content;
+      try {
+        // Try high-performance SyncAccessHandle (requires COOP/COEP)
+        const accessHandle = await fileHandle.createSyncAccessHandle();
+
+        let writeBuffer;
+        if (typeof content === 'string') {
+          const encoder = new TextEncoder();
+          writeBuffer = encoder.encode(content);
+        } else {
+          writeBuffer = content;
+        }
+
+        accessHandle.truncate(0);
+        accessHandle.write(writeBuffer, { at: 0 });
+        accessHandle.flush();
+        accessHandle.close();
+      } catch (e) {
+        // Fallback: createWritable (Async stream, works in more contexts)
+        // Note: createWritable on OPFS is standard but might have different support in older implementations.
+        // It generally works without COOP/COEP if the browser supports OPFS.
+        if (fileHandle.createWritable) {
+          const writable = await fileHandle.createWritable();
+          await writable.write(content);
+          await writable.close();
+        } else {
+          throw new Error('No method to write to file (SyncAccessHandle and createWritable failed/missing).');
+        }
       }
-
-      accessHandle.truncate(0);
-      accessHandle.write(writeBuffer, { at: 0 });
-      accessHandle.flush();
-      accessHandle.close();
 
       self.postMessage({ type: 'done', fileName, msg: 'Saved' });
     }
