@@ -1,32 +1,23 @@
+import { fs } from './FileService.js';
+
 export let db = null;
+
+const fileName = 'data.sql';
 
 export async function initDataBase() {
   try {
     // Initialize SQL.js
     const SQL = await initSqlJs({
-      locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.8.0/dist/${file}`
+      locateFile: file => `https://cdn.jsdelivr.net/npm/sql.js@1.10.3/dist/${file}`
     });
 
-    // Try to initialize OPFS for file storage
-    const root = await navigator.storage.getDirectory?.();
-
-    if (root) {
-      // Try to load existing database from OPFS
-      try {
-        const dbFile = await root.getFileHandle('data.sql');
-        const file = await dbFile.getFile();
-        const buffer = await file.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        db = new SQL.Database(data);
-      } catch (e) {
-        // Create new database
-        db = new SQL.Database();
-        initTables();
-        await saveDB();
-      }
+    if (await fs.exists(fileName)) {
+      const dbBuffer = await fs.readFile(fileName, 'binary');
+      db = new SQL.Database(dbBuffer);
     } else {
-      // OPFS not available
-      alert('⚠️ OPFS not available, using in-memory database');
+      db = new SQL.Database();
+      initTables();
+      saveDB()
     }
 
   } catch (e) {
@@ -36,16 +27,11 @@ export async function initDataBase() {
 
 export async function saveDB() {
   try {
-    const root = await navigator.storage.getDirectory();
-    const dbFile = await root.getFileHandle('data.sql', { create: true });
-    const writable = await dbFile.createWritable();
     const data = db.export();
-    const blob = new Blob([data]);
-    await writable.write(blob);
-    await writable.close();
+    await fs.writeFile(fileName, data);
     return true;
   } catch (e) {
-    console.warn('Could not save to OPFS:', e);
+    console.error('❌ Could not save to OPFS:', e.message);
     return false;
   }
 }
@@ -97,7 +83,7 @@ export function getAllNotes() {
         LEFT JOIN categories c ON n.category_id = c.id 
         ORDER BY n.updated_at DESC
     `);
-  
+
   if (result.length === 0) return [];
 
   return result[0].values.map(row => ({
