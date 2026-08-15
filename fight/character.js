@@ -44,7 +44,7 @@ class ChibiFighter {
         this.hp = this.maxHp;
 
         this.facing = isP1 ? 1 : -1;
-        this.state = STATE.IDLE;
+        this._state = STATE.IDLE;
         this.vx = 0;
         this.vy = 0;
         this.width = 60;
@@ -65,6 +65,17 @@ class ChibiFighter {
         };
 
         this.holdingWeapon = null; // New: Weapon holding state
+    }
+
+    get state() {
+        return this._state;
+    }
+
+    set state(newState) {
+        if (this._state !== newState) {
+            this._state = newState;
+            this.animFrame = 0;
+        }
     }
 
     initStatsByType() {
@@ -141,11 +152,20 @@ class ChibiFighter {
         if (ChibiFighter.loadingStarted) return;
         ChibiFighter.loadingStarted = true;
 
+        const cacheBuster = '?v=' + Date.now();
         const sources = {
-            wolf: 'img/wolf.png',
-            girl: 'img/girl.png',
-            villain: 'img/villain.png',
-            monster: 'img/monster.png'
+            wolf: 'img/wolf.png' + cacheBuster,
+            wolf_run: 'img/wolf_run.png' + cacheBuster,
+            wolf_attack: 'img/wolf_attack.png' + cacheBuster,
+            girl: 'img/girl.png' + cacheBuster,
+            girl_run: 'img/girl_run.png' + cacheBuster,
+            girl_attack: 'img/girl_attack.png' + cacheBuster,
+            villain: 'img/villain.png' + cacheBuster,
+            villain_run: 'img/villain_run.png' + cacheBuster,
+            villain_attack: 'img/villain_attack.png' + cacheBuster,
+            monster: 'img/monster.png' + cacheBuster,
+            monster_run: 'img/monster_run.png' + cacheBuster,
+            monster_attack: 'img/monster_attack.png' + cacheBuster
         };
 
         let loadedCount = 0;
@@ -184,10 +204,16 @@ class ChibiFighter {
                 bgG = Math.floor(bgG / samples.length);
                 bgB = Math.floor(bgB / samples.length);
 
-                // Use more aggressive threshold for cleaner removal
-                const threshold = 50; // Increased from 30
+                // Use aggressive threshold ONLY for green screen generated images. 
+                // Using 80 on a transparent/black background wipes out dark colors (e.g. hair).
+                // Lowered the green screen detection strictness since AI images can have shaded corners.
+                const isGreenBg = (bgG > 100 && bgG > bgR * 1.5 && bgG > bgB * 1.5);
+                const threshold = isGreenBg ? 85 : 30; 
 
                 for (let i = 0; i < data.length; i += 4) {
+                    // Skip pixels that are already transparent to save calculations
+                    if (data[i + 3] === 0) continue;
+
                     const r = data[i];
                     const g = data[i + 1];
                     const b = data[i + 2];
@@ -196,8 +222,11 @@ class ChibiFighter {
                     const diffR = Math.abs(r - bgR);
                     const diffG = Math.abs(g - bgG);
                     const diffB = Math.abs(b - bgB);
+                    
+                    // Chroma key logic specifically for the #00FF00 artifact squares
+                    const isGreenScreenArtifact = isGreenBg && (g > 120 && g > r * 1.5 && g > b * 1.5);
 
-                    if (diffR < threshold && diffG < threshold && diffB < threshold) {
+                    if ((diffR < threshold && diffG < threshold && diffB < threshold) || isGreenScreenArtifact) {
                         data[i + 3] = 0; // Fully transparent
                     } else if (diffR < threshold * 1.5 && diffG < threshold * 1.5 && diffB < threshold * 1.5) {
                         // Semi-transparent for edge smoothing
@@ -233,7 +262,13 @@ class ChibiFighter {
         if (this.state !== STATE.DODGE && this.state !== STATE.DEAD) {
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(this.x, GROUND_Y + 5, 30, 10, 0, 0, Math.PI * 2);
+            let shadowW = 30;
+            if (this.state === STATE.RUN) {
+                shadowW = 30 + Math.sin(this.animFrame * 0.4) * 8;
+            } else if (this.state === STATE.ATTACK && this.animFrame >= 10 && this.animFrame <= 15) {
+                shadowW = 40;
+            }
+            ctx.ellipse(this.x, GROUND_Y + 5, shadowW, 10, 0, 0, Math.PI * 2);
             ctx.fill();
         }
 
@@ -249,9 +284,14 @@ class ChibiFighter {
 
         // Bobbing animation
         let bobY = 0;
-        if (this.state === STATE.IDLE) bobY = Math.sin(this.animFrame * 0.1) * 2;
-        if (this.state === STATE.RUN) bobY = Math.sin(this.animFrame * 0.5) * 5;
-        if (this.state === STATE.WIN) bobY = Math.sin(this.animFrame * 0.2) * 5;
+        if (this.state === STATE.IDLE) {
+            bobY = Math.sin(this.animFrame * 0.1) * 3;
+        } else if (this.state === STATE.RUN) {
+            bobY = Math.abs(Math.sin(this.animFrame * 0.4)) * -15; // Bounce up
+            ctx.rotate(Math.sin(this.animFrame * 0.4) * 0.1); // Lean forward/backward slightly
+        } else if (this.state === STATE.WIN) {
+            bobY = Math.sin(this.animFrame * 0.2) * 5;
+        }
 
         ctx.translate(0, bobY);
 
@@ -262,13 +302,24 @@ class ChibiFighter {
             drawEllipse(ctx, 0, -55, auraSize, 90, `rgba(211, 47, 47, ${auraAlpha})`);
         }
 
-        // Determine which image to use
-        let img = ChibiFighter.images.monster; // Fallback
+        // Determine which image to use based on type and state
+        let baseImgStr = 'monster'; // Fallback
+        
+        if (this.type === 'wolf') baseImgStr = 'wolf';
+        else if (this.type === 'girl') baseImgStr = 'girl';
+        else if (this.type.startsWith('villain')) baseImgStr = 'villain';
 
-        if (this.type === 'wolf') img = ChibiFighter.images.wolf;
-        else if (this.type === 'girl') img = ChibiFighter.images.girl;
-        else if (this.type.startsWith('villain')) img = ChibiFighter.images.villain;
-        else if (['goblin', 'wild_boar', 'treant'].includes(this.type)) img = ChibiFighter.images.monster;
+        let targetImgStr = baseImgStr;
+
+        // Map state to image suffix if applicable
+        if (this.state === STATE.RUN) {
+            targetImgStr = baseImgStr + '_run';
+        } else if (this.state === STATE.ATTACK || this.state === STATE.SPECIAL) {
+            targetImgStr = baseImgStr + '_attack';
+        }
+
+        // Fallback to base image if specific action frame is missing
+        let img = ChibiFighter.images[targetImgStr] || ChibiFighter.images[baseImgStr] || ChibiFighter.images.monster;
 
         // Draw Image
         if (img && img.complete) {
@@ -276,14 +327,34 @@ class ChibiFighter {
             ctx.save();
 
             if (this.state === STATE.ATTACK) {
-                // Lunge forward
-                ctx.translate(20, 0);
-                ctx.rotate(0.2);
+                let t = this.animFrame;
+                if (t < 10) {
+                    // Wind up: pull back slightly
+                    ctx.translate(-t * 1.5, 0);
+                    ctx.rotate(-0.02 * t);
+                } else if (t < 15) {
+                    // Strike: dash forward quickly
+                    let progress = (t - 10) / 5;
+                    ctx.translate(-15 + progress * 40, progress * 5);
+                    ctx.rotate(-0.2 + progress * 0.4);
+                } else {
+                    // Hold and recover
+                    let progress = Math.min(1, (t - 15) / 15);
+                    ctx.translate(25 - progress * 10, 5 - progress * 5);
+                    ctx.rotate(0.2 - progress * 0.1);
+                }
             } else if (this.state === STATE.HIT) {
-                // Shake
-                ctx.translate(Math.random() * 10 - 5, 0);
-                ctx.rotate(-0.2);
-                ctx.globalAlpha = 0.7; // Flash
+                // Aggressive shake based on time
+                let intensity = Math.max(0, 15 - this.animFrame * 0.8);
+                ctx.translate((Math.random() - 0.5) * intensity, (Math.random() - 0.5) * intensity);
+                ctx.rotate(-0.2 + (Math.random() - 0.5) * 0.1 * intensity);
+                ctx.globalAlpha = this.animFrame % 4 < 2 ? 0.8 : 0.4; // Flash effect
+            } else if (this.state === STATE.DODGE) {
+                let t = this.animFrame;
+                let slide = Math.min(t * 3, 30);
+                ctx.translate(-slide, 0);
+                ctx.rotate(-0.1);
+                ctx.globalAlpha = Math.max(0.3, 1.0 - (t * 0.05));
             } else if (this.state === STATE.DEAD) {
                 ctx.rotate(Math.PI / 2); // Fall over
                 ctx.translate(0, -30);
@@ -292,6 +363,8 @@ class ChibiFighter {
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 3;
                 ctx.strokeRect(-40, -90, 80, 100); // Shield effect hint
+                ctx.translate(-5, 0); // Brace for impact
+                ctx.rotate(-0.1);
             }
 
             // Draw the sprite centered

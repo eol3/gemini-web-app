@@ -1,12 +1,12 @@
 import { createApp } from 'vue';
 import App from './App.js';
 import router from './router.js';
-import { initDataBase, getAllNotes, createNote, getNote } from './services/database.js';
-
-console.log(await initDataBase())
+import { initDataBase, createNote } from './services/database.js';
+await initDataBase()
+// console.log()
 await createNote("My First Note", "This is the content of my first note.", 0)
-console.log(getAllNotes())
-console.log(getNote(1))
+// console.log(getAllNotes())
+// console.log(getNote(1))
 
 // const root = await navigator.storage.getDirectory();
 // const dbFile = await root.getFileHandle('data.sql');

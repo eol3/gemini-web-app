@@ -1,5 +1,5 @@
 import { FileService } from './services/FileService.js';
-import { sqlite3Worker1Promiser } from 'https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.45.1-build1/sqlite-wasm/jswasm/sqlite3-worker1-promiser.mjs';
+import sqlite3Worker1Promiser from 'https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.46.0-build1/sqlite-wasm/jswasm/sqlite3-worker1-promiser.mjs';
 
 let promiser = null;
 
@@ -12,9 +12,9 @@ const initPromise = new Promise((resolve, reject) => {
         resolve(_promiser);
       },
       worker: () => {
-        // Explicitly load the worker from the same CDN version
-        const url = 'https://cdn.jsdelivr.net/npm/@sqlite.org/sqlite-wasm@3.45.1-build1/sqlite-wasm/jswasm/sqlite3-worker1.js';
-        return new Worker(url, { type: 'module' });
+        // Use a local worker script to bypass cross-origin restrictions.
+        // We will create public/sqlite-worker.js in the next step.
+        return new Worker('./src/sqlite-worker.js');
       }
     });
     promiser = _promiser;

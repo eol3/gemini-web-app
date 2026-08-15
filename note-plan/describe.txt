@@ -1,0 +1,50 @@
+做個本地檔案記事本，整體樣式簡單即可，可新增修改刪除記事，可新增修改刪除分類，可附加檔案，如果是圖片影片可簡單預覽
+匯出匯入時皆採用zip檔，裡面包含sqlite檔案，或是附加檔案
+
+技術線
+no build tool
+esmodule
+vue vue-router bootstrap
+OPFS
+sqlite
+
+資料結構
+data/files/... 每個資料夾不超過100個檔案
+data/data.sql
+src/assets/themes
+src/assets/images/
+src/assets/main.css
+src/views/preview/
+src/views/....
+src/main.js
+
+畫面layout
+記事本主頁.jpg - 點左上角進入主頁，點右上角設定進入設定頁，點「所有分類」進入「記事本分類頁.jpg」
+分類未設定顯示「未分類」
+無記事資料都留空白即可
+手機版可左右滑動，按儲存左滑回到列表
+記事本分類頁.jpg - 單純顯示分類，點編輯進入「記事本分類編輯頁.jpg」
+記事本分類編輯頁.jpg - 可編輯分類，點完成回到「記事本分類頁.jpg」
+記事本設定頁.jpg - 可各種設定
+
+設定說明
+
+記事本名稱-可修改記事本名稱，左上角名稱跟著變動
+
+匯入/匯出
+匯入 - 可選擇合併或取代
+匯出 - 可選擇匯出資料分離html，或是資料渲染html
+資料分離必須用web server查看，可以簡單搜尋，替換資料夾檔案就可以更換資料，資料結構大概如下
+data/data.sql
+data/files/...
+src/assets/...
+src/main.js
+index.html
+資料渲染html，就完全靜態html，資料都渲染進html，資料結構大概如下
+data/[id].html
+src/assets/...
+index.html
+
+主題 - 可選擇主題顏色，可預覽
+
+儲存位置 - 如果可以存取本地檔案系統，則可以設定儲存本地路徑，不行就都用OPFS

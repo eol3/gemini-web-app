@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>SQLite + OPFS 範例</title>
+</head>
+<body>
+  <h2>SQLite Wasm + OPFS 增量寫入展示</h2>
+  
+  <input type="text" id="logInput" placeholder="輸入要寫入的文字...">
+  <button id="addBtn">寫入資料庫</button>
+  <button id="readBtn">讀取所有資料</button>
+
+  <ul id="logList"></ul>
+
+  <script>
+    // 1. 建立 Web Worker
+    const worker = new Worker('db-worker.js', { type: 'module' });
+
+    worker.onerror = (err) => {
+      console.error("Worker 載入失敗！詳細資訊：");
+  console.error("錯誤訊息 (message):", err.message);
+  console.error("發生檔案 (filename):", err.filename);
+  console.error("行數 (lineno):", err.lineno);
+    };
+
+    const logInput = document.getElementById('logInput');
+    const addBtn = document.getElementById('addBtn');
+    const readBtn = document.getElementById('readBtn');
+    const logList = document.getElementById('logList');
+
+    // 2. 監聽來自 Worker 的回應
+    worker.onmessage = (e) => {
+      const { status, message, data } = e.data;
+
+      if (status === 'SUCCESS') {
+        alert(message);
+        logInput.value = '';
+        // 寫入後自動重新讀取
+        worker.postMessage({ action: 'GET_LOGS' });
+      } 
+      
+      if (status === 'DATA') {
+        logList.innerHTML = data.map(item => 
+          `<li>[${item.created_at}] ID ${item.id}: ${item.content}</li>`
+        ).join('');
+      }
+    };
+
+    // 3. 按鈕事件：發送寫入指令
+    addBtn.onclick = () => {
+      const text = logInput.value.trim();
+      if (!text) return;
+      
+      worker.postMessage({
+        action: 'ADD_LOG',
+        payload: { content: text }
+      });
+    };
+
+    // 4. 按鈕事件：發送讀取指令
+    readBtn.onclick = () => {
+      worker.postMessage({ action: 'GET_LOGS' });
+    };
+  </script>
+</body>
+</html>

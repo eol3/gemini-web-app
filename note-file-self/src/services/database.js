@@ -107,10 +107,35 @@ export function getNote(id) {
   return stmt.getAsObject({ $id: id });
 }
 
-export async function createNote(title, content, category_id) {
-  db.run(`
-      INSERT INTO notes (title, content, category_id)
-      VALUES (?, ?, ?)
-  `, [title, content, category_id]);
-  await saveDB();
+// 通用的数据库操作 wrapper，自动处理错误和保存
+function executeDB(dbOperation) {
+  return async function(...args) {
+    try {
+      const result = await dbOperation(...args);
+      // await saveDB();
+      return { success: true, data: result };
+    } catch (error) {
+      console.error('Database operation failed:', error);
+      return { success: false, message: error.message };
+    }
+  };
 }
+
+export const createNote = executeDB(function(title, content, category_id) {
+  db.exec(`
+    INSERT INTO notes (title, content, category_id)
+    VALUES (?, ?, ?)
+  `, [title, content, category_id]);
+});
+
+export const updateNote = executeDB(function(id, title, content, category_id) {
+  db.run(`
+    UPDATE notes
+    SET title = ?, content = ?, category_id = ?
+    WHERE id = ?
+  `, [title, content, category_id, id]);
+});
+
+export const deleteNote = executeDB(function(id) {
+  db.run(`DELETE FROM notes WHERE id = ?`, [id]);
+});
